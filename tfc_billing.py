@@ -24,7 +24,7 @@ import re as re_module
 import requests
 import subprocess
 
-APP_VERSION = "1.2.1"
+APP_VERSION = "1.2.2"
 import math
 import random
 import os
@@ -7783,7 +7783,7 @@ class MainWindow(QMainWindow):
         
         action_user_manual = QAction("User Manual", self)
         action_user_manual.triggered.connect(self.open_user_manual)
-        action_procurement = QAction("🧾 Procure", self)
+        action_procurement = QAction("🧾 Entry Journal", self)
         action_procurement.triggered.connect(self.open_procurement_dialog)
         
         # QR Code Action
