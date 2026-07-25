@@ -1,7 +1,5 @@
 import sqlite3 as real_sqlite3
 import threading
-import firebase_admin
-from firebase_admin import credentials, firestore
 import json
 import os
 import datetime
@@ -11,14 +9,7 @@ print("INITIALIZING FIRESTORE SYNC MODULE...")
 
 # Initialize Firebase
 try:
-    if not firebase_admin._apps:
-        # Try local dir or script dir
-        key_path = 'serviceAccountKey.json'
-        if not os.path.exists(key_path):
-            key_path = os.path.join(os.path.dirname(__file__), 'serviceAccountKey.json')
-        cred = credentials.Certificate(key_path)
-        firebase_admin.initialize_app(cred)
-    db = firestore.client()
+    from firestore_rest import firestore as db
 except Exception as e:
     print(f"FAILED TO INIT FIREBASE: {e}")
     db = None

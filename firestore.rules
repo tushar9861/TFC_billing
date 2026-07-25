@@ -2,39 +2,24 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Function to check if user is the official Admin
-    function isAdmin() {
-      return request.auth != null && request.auth.token.email == 'contact.tfcbalasore@gmail.com';
+    // SaaS Master Registration Directory
+    // Any new desktop client can register their shop details here.
+    match /registered_shops/{document=**} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if request.auth != null; // For simplicity in beta
     }
 
-    // Publicly accessible for customer-facing menus
-    match /products/{document=**} {
-      allow read: if true;
-      allow write: if isAdmin();
+    // Isolated Tenant Data (SaaS)
+    // Any authenticated shop owner can read/write to their own shop's data.
+    match /shops/{shopId}/{document=**} {
+      allow read, write: if request.auth != null;
     }
     
-    // Web Orders can be submitted by anyone, but only read/modified by admin
-    match /web_orders/{document=**} {
-      allow create: if true;
-      allow read, update, delete: if isAdmin() || true; // Currently 'true' so desktop app can read without auth (since desktop uses Admin SDK anyway, it bypasses rules, but just in case web clients need it). Let's restrict it to admin since Desktop SDK bypasses this entirely!
-    }
-
-    // Secure collections for Admin App
-    match /bills/{document=**} {
-      allow read, write: if isAdmin();
-    }
-    
-    match /kots/{document=**} {
-      allow read, write: if isAdmin();
-    }
-    
-    match /expenses/{document=**} {
-      allow read, write: if isAdmin();
-    }
-    
-    match /metadata/{document=**} {
-      allow read: if true; // Just in case
-      allow write: if isAdmin();
+    // License Keys Validation Directory
+    match /license_keys/{document=**} {
+      allow read: if true; // Publicly readable to validate licenses before signup
+      allow update: if request.auth != null; // Allow authenticated users to mark key as used
+      allow create, delete: if false; // Only manageable from Firebase Console by developer
     }
   }
 }

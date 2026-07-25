@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import firestore_sqlite_bridge as sqlite3
 import colorsys
@@ -25,15 +25,13 @@ import requests
 import subprocess
 
 APP_VERSION = "1.1.0"
-from login_ui import ModernLoginScreen, RecentAccountCard, FloatingInput
-
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout,
     QGridLayout, QFileDialog, QListWidget, QTextEdit, QMessageBox, QTableWidget, QFormLayout,
     QTableWidgetItem, QSpinBox, QComboBox, QHeaderView, QFrame, QDialog, QDateEdit, QTimeEdit, QCompleter,
     QInputDialog, QListWidgetItem, QCheckBox, QDesktopWidget, QScrollArea, QAction, QSplitter, QTabWidget,
-    QGraphicsOpacityEffect, QGroupBox, QGraphicsDropShadowEffect, QGraphicsBlurEffect, QShortcut, QProgressBar,
+    QGraphicsOpacityEffect, QGroupBox, QGraphicsDropShadowEffect, QShortcut, QProgressBar,
     QToolButton, QMenu, QWidgetAction, QAbstractItemView, QSizePolicy, QDoubleSpinBox, QAbstractButton
 )
 from PyQt5.QtGui import QPixmap, QFont, QImage, QPainter, QColor, QDoubleValidator, QKeySequence, QIcon, QIntValidator, QDrag, QPen, QPalette, QBrush, QTextDocument
@@ -41,6 +39,7 @@ from PyQt5.QtPrintSupport import QPrinter, QPrinterInfo
 from PyQt5.QtCore import Qt, QTimer, QTime, QPropertyAnimation, QEasingCurve, QMetaObject, Q_ARG, pyqtSlot, pyqtSignal, QObject, QThread, QMimeData, QUrl, QDate, QStringListModel, QSize, QPoint, QEvent
 import webbrowser
 from PIL import Image
+import firebase_admin
 from firebase_admin import credentials, firestore
 import qrcode
 import pandas as pd
@@ -146,7 +145,7 @@ os.makedirs(BILLS_DIR, exist_ok=True)
 
 # Global settings, managed via config.json
 DEFAULT_CONFIG = {
-    "app_name": "TFC (TIWARI'S FRIED CHICKEN) 🐔",
+    "app_name": "TFC (TIWARI'S FRIED CHICKEN) ≡ƒÉö",
     "outlet_phone": "9861530553",
     "outlet_fssai": "22025010001925",
     "logo_path": "",
@@ -859,14 +858,14 @@ def trigger_send_admin_report(parent, conn):
             btn.setText(msg)
             
     def on_success(msg):
-        ToastNotification(parent, f"✅ {msg}")
+        ToastNotification(parent, f"Γ£à {msg}")
         if isinstance(btn, QPushButton):
             btn.setEnabled(True)
             btn.setText(btn.property("original_text"))
             btn.setStyleSheet(btn.property("original_style"))
             
     def on_error(msg):
-        ToastNotification(parent, f"❌ {msg}", type="error")
+        ToastNotification(parent, f"Γ¥î {msg}", type="error")
         if isinstance(btn, QPushButton):
             btn.setEnabled(True)
             btn.setText(btn.property("original_text"))
@@ -1293,7 +1292,7 @@ class RevenueDialog(QDialog):
         self.expense_description = QLineEdit()
         self.expense_description.setPlaceholderText("e.g., Purchase from supplier X")
         self.expense_amount = QLineEdit()
-        self.expense_amount.setPlaceholderText("Amount in ₹")
+        self.expense_amount.setPlaceholderText("Amount in Γé╣")
         self.expense_amount.setValidator(QDoubleValidator(0.0, 9999999.0, 2))
         
         form_layout.addWidget(QLabel("Category:"), 0, 0)
@@ -1339,9 +1338,9 @@ class RevenueDialog(QDialog):
         self.summary_title_label = QLabel("<b>This Month's Financial Summary</b>")
         profit_layout.addWidget(self.summary_title_label)
         
-        self.total_sales_label = QLabel("Total Sales: ₹0.00")
-        self.total_expenses_label = QLabel("Total Expenses: ₹0.00")
-        self.net_profit_label = QLabel("<b>Net Profit: ₹0.00</b>")
+        self.total_sales_label = QLabel("Total Sales: Γé╣0.00")
+        self.total_expenses_label = QLabel("Total Expenses: Γé╣0.00")
+        self.net_profit_label = QLabel("<b>Net Profit: Γé╣0.00</b>")
         self.net_profit_label.setFont(QFont("Segoe UI", 14, QFont.Bold))
         
         profit_layout.addWidget(self.total_sales_label)
@@ -1383,7 +1382,7 @@ class RevenueDialog(QDialog):
             self.expenses_table.setItem(row, 0, date_item)
             self.expenses_table.setItem(row, 1, QTableWidgetItem(category))
             self.expenses_table.setItem(row, 2, QTableWidgetItem(description))
-            self.expenses_table.setItem(row, 3, QTableWidgetItem(f"₹{(amount or 0.0):.2f}"))
+            self.expenses_table.setItem(row, 3, QTableWidgetItem(f"Γé╣{(amount or 0.0):.2f}"))
 
     def save_expense(self):
         category = self.expense_category.currentText()
@@ -1491,9 +1490,9 @@ class RevenueDialog(QDialog):
         total_expenses = c.fetchone()[0] or 0.0
         net_profit = total_sales - total_expenses
         
-        self.total_sales_label.setText(f"Total Sales: ₹{(total_sales or 0.0):.2f}")
-        self.total_expenses_label.setText(f"Total Expenses: ₹{(total_expenses or 0.0):.2f}")
-        self.net_profit_label.setText(f"<b>Net Profit: ₹{(net_profit or 0.0):.2f}</b>")
+        self.total_sales_label.setText(f"Total Sales: Γé╣{(total_sales or 0.0):.2f}")
+        self.total_expenses_label.setText(f"Total Expenses: Γé╣{(total_expenses or 0.0):.2f}")
+        self.net_profit_label.setText(f"<b>Net Profit: Γé╣{(net_profit or 0.0):.2f}</b>")
         if net_profit < 0:
             self.net_profit_label.setStyleSheet("color: red;")
         else:
@@ -1582,7 +1581,7 @@ class BillSearchDialog(QDialog):
         search_layout.addWidget(btn_search, 5, 0, 1, 2)
         layout.addLayout(search_layout)
         
-        self.search_total_label = QLabel("Total Amount: ₹0.00")
+        self.search_total_label = QLabel("Total Amount: Γé╣0.00")
         self.search_total_label.setStyleSheet("font-weight: bold; font-size: 11pt; color: #e30613;")
         layout.addWidget(self.search_total_label)
         
@@ -1664,7 +1663,7 @@ class BillSearchDialog(QDialog):
                 for i, val in enumerate(row[:5]):
                     self.results_table.setItem(r, i, QTableWidgetItem(str(val or "")))
                 
-                self.results_table.setItem(r, 5, QTableWidgetItem(f"₹{(net_total or 0.0):.2f}"))
+                self.results_table.setItem(r, 5, QTableWidgetItem(f"Γé╣{(net_total or 0.0):.2f}"))
                 
                 status_item = QTableWidgetItem(status)
                 if status == "Refunded": status_item.setForeground(QColor("red"))
@@ -1672,7 +1671,7 @@ class BillSearchDialog(QDialog):
                 self.results_table.setItem(r, 6, status_item)
                 
                 total_amount += net_total
-            self.search_total_label.setText(f"Total Amount: ₹{(total_amount or 0.0):.2f}")
+            self.search_total_label.setText(f"Total Amount: Γé╣{(total_amount or 0.0):.2f}")
         except Exception as e:
             log_exception(e)
             QMessageBox.critical(self, "Error", "Failed to search bills")
@@ -1699,7 +1698,7 @@ class BillSearchDialog(QDialog):
             QMessageBox.warning(self, "Refunded", "This bill is already fully refunded.")
             return
             
-        amount, ok = QInputDialog.getDouble(self, "Refund Amount", f"Enter refund amount (Max ₹{(max_refund or 0.0):.2f}):", max_refund, 0.1, max_refund, 2)
+        amount, ok = QInputDialog.getDouble(self, "Refund Amount", f"Enter refund amount (Max Γé╣{(max_refund or 0.0):.2f}):", max_refund, 0.1, max_refund, 2)
         if not ok: return
         
         reason, ok2 = QInputDialog.getText(self, "Refund Reason", "Reason for refund:")
@@ -1709,7 +1708,7 @@ class BillSearchDialog(QDialog):
             c.execute("INSERT INTO refunds (bill_no, amount, dt, reason) VALUES (?, ?, ?, ?)", 
                       (bill_no, amount, datetime.datetime.now().isoformat(), reason))
             self.conn.commit()
-            QMessageBox.information(self, "Success", f"Successfully refunded ₹{(amount or 0.0):.2f}")
+            QMessageBox.information(self, "Success", f"Successfully refunded Γé╣{(amount or 0.0):.2f}")
             self.search_bills()
             
             if hasattr(self.parent(), 'update_dashboard_metrics'):
@@ -1866,8 +1865,8 @@ class SalesAnalyticsDialog(QDialog):
         trend_layout.addWidget(self.canvas)
 
         totals_layout = QHBoxLayout()
-        self.total_sales_label = QLabel("Total Sales (Period): ₹0.00")
-        self.avg_daily_sales_label = QLabel("Avg. Daily Sales: ₹0.00")
+        self.total_sales_label = QLabel("Total Sales (Period): Γé╣0.00")
+        self.avg_daily_sales_label = QLabel("Avg. Daily Sales: Γé╣0.00")
         totals_layout.addWidget(self.total_sales_label)
         totals_layout.addWidget(self.avg_daily_sales_label)
         trend_layout.addLayout(totals_layout)
@@ -2001,7 +2000,7 @@ class SalesAnalyticsDialog(QDialog):
                     self.ax.set_title("Daily Sales Trend")
                     self.ax.set_xlabel("Date")
 
-            self.ax.set_ylabel("Sales (₹)", color='#444444', fontweight='bold', fontsize=11)
+            self.ax.set_ylabel("Sales (Γé╣)", color='#444444', fontweight='bold', fontsize=11)
             self.ax.set_xlabel(self.ax.get_xlabel(), color='#444444', fontweight='bold', fontsize=11)
             self.ax.set_title(self.ax.get_title(), color='#222222', fontweight='bold', fontsize=14, pad=15)
             
@@ -2026,8 +2025,8 @@ class SalesAnalyticsDialog(QDialog):
             total_sales_period = df_filtered['total'].sum()
             num_days = (df_filtered['dt'].max() - df_filtered['dt'].min()).days + 1 if not df_filtered.empty else 1
             avg_daily_sales = total_sales_period / num_days
-            self.total_sales_label.setText(f"Total Sales (Period): ₹{(total_sales_period or 0.0):.2f}")
-            self.avg_daily_sales_label.setText(f"Avg. Daily Sales: ₹{(avg_daily_sales or 0.0):.2f}")
+            self.total_sales_label.setText(f"Total Sales (Period): Γé╣{(total_sales_period or 0.0):.2f}")
+            self.avg_daily_sales_label.setText(f"Avg. Daily Sales: Γé╣{(avg_daily_sales or 0.0):.2f}")
 
             # --- Calculate and display individual item sales ---
             item_sales = {}
@@ -2051,7 +2050,7 @@ class SalesAnalyticsDialog(QDialog):
                 self.item_sales_table.insertRow(row_position)
                 self.item_sales_table.setItem(row_position, 0, QTableWidgetItem(name))
                 self.item_sales_table.setItem(row_position, 1, QTableWidgetItem(str(data['qty'])))
-                self.item_sales_table.setItem(row_position, 2, QTableWidgetItem(f"₹{(data['sales'] or 0.0):.2f}"))
+                self.item_sales_table.setItem(row_position, 2, QTableWidgetItem(f"Γé╣{(data['sales'] or 0.0):.2f}"))
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -2134,7 +2133,7 @@ class SalesAnalyticsDialog(QDialog):
             # Blues is extremely professional and matches modern UI aesthetics
             cax = self.ax_heat.imshow(pivot.values, cmap='Blues', aspect='auto')
             self.cbar = self.fig_heat.colorbar(cax, ax=self.ax_heat)
-            self.cbar.set_label("Total Sales (₹)" if metric == "Sales Density" else "Number of Orders", color='#444444', fontweight='bold', fontsize=10)
+            self.cbar.set_label("Total Sales (Γé╣)" if metric == "Sales Density" else "Number of Orders", color='#444444', fontweight='bold', fontsize=10)
             self.cbar.ax.tick_params(colors='#555555')
             self.cbar.outline.set_visible(False)
             
@@ -2247,12 +2246,12 @@ class ComboDialog(QDialog):
         self.combo_price_offline = QLineEdit()
         self.combo_price_offline.setPlaceholderText("Combo Offline Price")
         self.combo_price_offline.setValidator(double_validator)
-        layout.addWidget(QLabel("Combo Offline Price (₹)"))
+        layout.addWidget(QLabel("Combo Offline Price (Γé╣)"))
         layout.addWidget(self.combo_price_offline)
         self.combo_price_online = QLineEdit()
         self.combo_price_online.setPlaceholderText("Combo Online Price")
         self.combo_price_online.setValidator(double_validator)
-        layout.addWidget(QLabel("Combo Online Price (₹)"))
+        layout.addWidget(QLabel("Combo Online Price (Γé╣)"))
         layout.addWidget(self.combo_price_online)
         self.items_list = QListWidget()
         self.items_list.setSelectionMode(QListWidget.MultiSelection)
@@ -2426,12 +2425,12 @@ class ProductDialog(QDialog):
         form.addWidget(QLabel("Category"), 1, 0)
         self.p_cat = QLineEdit()
         form.addWidget(self.p_cat, 1, 1)
-        form.addWidget(QLabel("Offline Price (₹)"), 2, 0)
+        form.addWidget(QLabel("Offline Price (Γé╣)"), 2, 0)
         double_validator = QDoubleValidator(0.0, 999999.0, 2)
         self.p_price_offline = QLineEdit()
         self.p_price_offline.setValidator(double_validator)
         form.addWidget(self.p_price_offline, 2, 1)
-        form.addWidget(QLabel("Online Price (₹)"), 3, 0)
+        form.addWidget(QLabel("Online Price (Γé╣)"), 3, 0)
         self.p_price_online = QLineEdit()
         self.p_price_online.setValidator(double_validator)
         form.addWidget(self.p_price_online, 3, 1)
@@ -2551,7 +2550,7 @@ class ProductDialog(QDialog):
             c.execute("SELECT name, category, price_offline, price_online, qty FROM products WHERE inventory_type = ? ORDER BY display_order ASC, category ASC, name ASC", (self.inventory_type,))
             for idx, (name, cat, price_offline, price_online, qty) in enumerate(c.fetchall(), start=1):
                 price_display = price_offline if self.inventory_type == "offline" else price_online
-                item_text = f"{idx}. {name} | {cat or 'Uncategorized'} | ₹{(price_display or 0.0):.2f} | Qty:{qty}"
+                item_text = f"{idx}. {name} | {cat or 'Uncategorized'} | Γé╣{(price_display or 0.0):.2f} | Qty:{qty}"
                 item = QListWidgetItem(item_text)
                 item.setData(Qt.UserRole, name)
                 self.product_list.addItem(item)
@@ -2721,7 +2720,7 @@ class PrinterSettingsDialog(QDialog):
         self.printer_combo = QComboBox()
         p_layout.addWidget(self.printer_combo)
 
-        refresh_btn = QPushButton("🔄")
+        refresh_btn = QPushButton("≡ƒöä")
         refresh_btn.setObjectName("refreshBtn")
         refresh_btn.clicked.connect(self.refresh_printers)
         p_layout.addWidget(refresh_btn)
@@ -2842,8 +2841,8 @@ class ReportsDialog(QDialog):
         filter_layout.addWidget(self.order_type_filter)
         
         summary_layout = QHBoxLayout()
-        self.total_sales_label = QLabel("Total Sales: ₹0.00")
-        self.today_sales_label = QLabel("Today's Sales: ₹0.00")
+        self.total_sales_label = QLabel("Total Sales: Γé╣0.00")
+        self.today_sales_label = QLabel("Today's Sales: Γé╣0.00")
         summary_layout.addWidget(self.total_sales_label)
         summary_layout.addWidget(self.today_sales_label)
         layout.addLayout(filter_layout)
@@ -2992,10 +2991,10 @@ class ReportsDialog(QDialog):
                 self.live_table.setItem(r, 2, QTableWidgetItem(str(row.customer_name or "")))
                 self.live_table.setItem(r, 3, QTableWidgetItem(str(row.phone or "")))
                 self.live_table.setItem(r, 4, QTableWidgetItem(str(row.order_type).capitalize()))
-                self.live_table.setItem(r, 5, QTableWidgetItem(f"₹{(row.total or 0.0):.2f}"))
+                self.live_table.setItem(r, 5, QTableWidgetItem(f"Γé╣{(row.total or 0.0):.2f}"))
             
             total_sales = df['total'].sum()
-            self.total_sales_label.setText(f"Total Sales (Period): ₹{(total_sales or 0.0):.2f}")
+            self.total_sales_label.setText(f"Total Sales (Period): Γé╣{(total_sales or 0.0):.2f}")
 
             # Calculate Today's Sales for the summary view
             # Using the pandas frame since SQLite date(dt) is broken for mixed formats
@@ -3003,7 +3002,7 @@ class ReportsDialog(QDialog):
             df_all = pd.read_sql_query(query_all, self.conn)
             df_all['dt'] = pd.to_datetime(df_all['dt'], format='mixed', errors='coerce')
             today_total = df_all[df_all['dt'].dt.date == datetime.date.today()]['total'].sum()
-            self.today_sales_label.setText(f"Today's Sales: ₹{(today_total or 0.0):.2f}")
+            self.today_sales_label.setText(f"Today's Sales: Γé╣{(today_total or 0.0):.2f}")
         except Exception as e:
             log_exception(e)
             QMessageBox.critical(self, "Error", f"Failed to load reports: {e}")
@@ -3061,9 +3060,9 @@ class BillPreviewDialog(QDialog):
         layout.addWidget(self.text_edit)
         
         btn_layout = QHBoxLayout()
-        self.btn_print = QPushButton("🖨️ Print, WA & Finalize (P)")
+        self.btn_print = QPushButton("≡ƒû¿∩╕Å Print, WA & Finalize (P)")
         self.btn_print.setStyleSheet("background-color: #007bff; border: none;")
-        self.btn_wa = QPushButton("💬 WhatsApp & Finalize")
+        self.btn_wa = QPushButton("≡ƒÆ¼ WhatsApp & Finalize")
         self.btn_wa.setStyleSheet("background-color: #25D366; border: none; color: white;")
         self.btn_cancel = QPushButton("Cancel (C)")
         self.btn_cancel.setStyleSheet("background-color: #6c757d; border: none;")
@@ -3305,12 +3304,12 @@ class ReportWorker(QThread):
                 diff = today_sales - yest_sales
                 pct = (abs(diff) / yest_sales) * 100
                 if diff > 0:
-                    trend_str = f" 🟢 Up {pct:.1f}% from yesterday"
+                    trend_str = f" ≡ƒƒó Up {pct:.1f}% from yesterday"
                 elif diff < 0:
-                    trend_str = f" 🔴 Down {pct:.1f}% from yesterday"
+                    trend_str = f" ≡ƒö┤ Down {pct:.1f}% from yesterday"
             
             quote = get_random_quote()
-            message = f"📈 *Today's Snapshot:*\nTotal Sales: ₹{(today_sales or 0.0):.2f} | Profit: ₹{(today_profit or 0.0):.2f} | Total Bills: {today_bills}\n{trend_str}\n\n_{quote}_"
+            message = f"≡ƒôê *Today's Snapshot:*\nTotal Sales: Γé╣{(today_sales or 0.0):.2f} | Profit: Γé╣{(today_profit or 0.0):.2f} | Total Bills: {today_bills}\n{trend_str}\n\n_{quote}_"
             
             # Generate PDF
             success_gen = generate_business_report_pdf(conn, self.pdf_path)
@@ -3343,13 +3342,13 @@ class ToastNotification(QWidget):
         self.frame.setObjectName("toastFrame")
         if type == "success":
             color = "#28a745"
-            icon = "✓ "
+            icon = "Γ£ô "
         elif type == "error":
             color = "#dc3545"
-            icon = "✖ "
+            icon = "Γ£û "
         else:
             color = "#17a2b8"
-            icon = "ℹ "
+            icon = "Γä╣ "
             
         self.frame.setStyleSheet(f"""
             #toastFrame {{
@@ -3401,7 +3400,7 @@ class ToastNotification(QWidget):
 class AdvancedFeaturesDialog(QDialog):
     def __init__(self, conn, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("🚀 Advanced System Management")
+        self.setWindowTitle("≡ƒÜÇ Advanced System Management")
         self.setGeometry(300, 200, 1200, 675)
         self.conn = conn
         self.setStyleSheet("""
@@ -3434,7 +3433,7 @@ class AdvancedFeaturesDialog(QDialog):
         db_info_layout.addWidget(btn_integrity)
         db_layout.addWidget(db_info)
         db_layout.addStretch()
-        tabs.addTab(db_tab, "📦 Database")
+        tabs.addTab(db_tab, "≡ƒôª Database")
 
         # --- DATA EXPORT TAB ---
         export_tab = QWidget()
@@ -3453,7 +3452,7 @@ class AdvancedFeaturesDialog(QDialog):
         export_box_layout.addWidget(btn_exp_products)
         exp_layout.addWidget(export_box)
         exp_layout.addStretch()
-        tabs.addTab(export_tab, "📤 Data Portability")
+        tabs.addTab(export_tab, "≡ƒôñ Data Portability")
 
         # --- SYSTEM TAB ---
         sys_tab = QWidget()
@@ -3473,7 +3472,7 @@ class AdvancedFeaturesDialog(QDialog):
         sys_box_layout.addWidget(btn_reset)
         sys_layout.addWidget(sys_box)
         sys_layout.addStretch()
-        tabs.addTab(sys_tab, "🛠️ System")
+        tabs.addTab(sys_tab, "≡ƒ¢á∩╕Å System")
 
         layout.addWidget(tabs)
         
@@ -3500,7 +3499,7 @@ class AdvancedFeaturesDialog(QDialog):
             QMessageBox.information(self, "Reset", "Please restart application.")
 
 class KPICard(QFrame):
-    def __init__(self, title, initial_value, icon="📌", color="#e30613"):
+    def __init__(self, title, initial_value, icon="≡ƒôî", color="#e30613"):
         super().__init__()
         self.setObjectName("kpiCard")
         self.base_color = color
@@ -3578,7 +3577,7 @@ class CustomerProfileCard(QFrame):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
 
-        self.avatar = QLabel("👤")
+        self.avatar = QLabel("≡ƒæñ")
         self.avatar.setFont(QFont("Segoe UI", 24))
         self.avatar.setFixedSize(50, 50)
         self.avatar.setAlignment(Qt.AlignCenter)
@@ -3611,7 +3610,7 @@ class CustomerProfileCard(QFrame):
         self.stats_label.setText(stats)
         
     def clear(self):
-        self.update_card("👤", "#e9ecef", "#6c757d", "", "#343a40", "Customer history will appear here once verified.")
+        self.update_card("≡ƒæñ", "#e9ecef", "#6c757d", "", "#343a40", "Customer history will appear here once verified.")
 
 
 class ErrorLogDialog(QDialog):
@@ -3638,7 +3637,7 @@ class ErrorLogDialog(QDialog):
         layout.addWidget(self.text_edit)
         
         btn_layout = QHBoxLayout()
-        btn_copy_ai = QPushButton("🤖 Copy for AI")
+        btn_copy_ai = QPushButton("≡ƒñû Copy for AI")
         btn_copy_ai.setStyleSheet("background-color: #6f42c1; color: white; padding: 10px; font-weight: bold; border-radius: 6px;")
         btn_copy_ai.clicked.connect(self.copy_for_ai)
         
@@ -3802,12 +3801,12 @@ class CustomerInsightsDialog(QDialog):
                 self.customer_table.setItem(row, 1, QTableWidgetItem(phone))
                 self.customer_table.setItem(row, 2, QTableWidgetItem(last_visit))
                 self.customer_table.setItem(row, 3, QTableWidgetItem(str(frequency)))
-                self.customer_table.setItem(row, 4, QTableWidgetItem(f"₹{total_spend:,.2f}"))
-                self.customer_table.setItem(row, 5, QTableWidgetItem(f"₹{total_discount:,.2f}"))
+                self.customer_table.setItem(row, 4, QTableWidgetItem(f"Γé╣{total_spend:,.2f}"))
+                self.customer_table.setItem(row, 5, QTableWidgetItem(f"Γé╣{total_discount:,.2f}"))
                 self.customer_table.setItem(row, 6, QTableWidgetItem(fav_dish))
 
                 # WhatsApp Button
-                btn_wa = QPushButton("💬 Send Promo")
+                btn_wa = QPushButton("≡ƒÆ¼ Send Promo")
                 btn_wa.setStyleSheet("background-color: #25D366; color: white; font-weight: bold;")
                 btn_wa.clicked.connect(lambda _, p=phone, n=name: self.send_whatsapp_promo(p, n))
                 self.customer_table.setCellWidget(row, 7, btn_wa)
@@ -3970,10 +3969,10 @@ class CustomerProfileDialog(QDialog):
 
         # --- KPI Cards ---
         kpi_layout = QGridLayout()
-        self.kpi_spend_card, self.kpi_spend_label = self.create_kpi_card("Lifetime Spend", "₹0.00", "💰")
-        self.kpi_orders_card, self.kpi_orders_label = self.create_kpi_card("Total Orders", "0", "🧾")
-        self.kpi_avg_card, self.kpi_avg_label = self.create_kpi_card("Avg. Order Value", "₹0.00", "📊")
-        self.kpi_discount_card, self.kpi_discount_label = self.create_kpi_card("Total Discounts", "₹0.00", "💸")
+        self.kpi_spend_card, self.kpi_spend_label = self.create_kpi_card("Lifetime Spend", "Γé╣0.00", "≡ƒÆ░")
+        self.kpi_orders_card, self.kpi_orders_label = self.create_kpi_card("Total Orders", "0", "≡ƒº╛")
+        self.kpi_avg_card, self.kpi_avg_label = self.create_kpi_card("Avg. Order Value", "Γé╣0.00", "≡ƒôè")
+        self.kpi_discount_card, self.kpi_discount_label = self.create_kpi_card("Total Discounts", "Γé╣0.00", "≡ƒÆ╕")
         
         kpi_layout.addWidget(self.kpi_spend_card, 0, 0)
         kpi_layout.addWidget(self.kpi_orders_card, 0, 1)
@@ -4009,10 +4008,10 @@ class CustomerProfileDialog(QDialog):
         avg_order = total_spend / total_orders if total_orders > 0 else 0
         total_discount = sum(r[3] for r in rows)
 
-        self.kpi_spend_label.setText(f"₹{total_spend:,.2f}")
+        self.kpi_spend_label.setText(f"Γé╣{total_spend:,.2f}")
         self.kpi_orders_label.setText(str(total_orders))
-        self.kpi_avg_label.setText(f"₹{avg_order:,.2f}")
-        self.kpi_discount_label.setText(f"₹{total_discount:,.2f}")
+        self.kpi_avg_label.setText(f"Γé╣{avg_order:,.2f}")
+        self.kpi_discount_label.setText(f"Γé╣{total_discount:,.2f}")
 
         self.history_table.setRowCount(0)
         for name, dt, items_json, discount, total, bill_no in rows:
@@ -4023,8 +4022,8 @@ class CustomerProfileDialog(QDialog):
             self.history_table.setItem(row_pos, 0, QTableWidgetItem(bill_no))
             self.history_table.setItem(row_pos, 1, QTableWidgetItem(dt[:10]))
             self.history_table.setItem(row_pos, 2, QTableWidgetItem(", ".join(items)))
-            self.history_table.setItem(row_pos, 3, QTableWidgetItem(f"₹{discount:,.2f}"))
-            self.history_table.setItem(row_pos, 4, QTableWidgetItem(f"₹{total:,.2f}"))
+            self.history_table.setItem(row_pos, 3, QTableWidgetItem(f"Γé╣{discount:,.2f}"))
+            self.history_table.setItem(row_pos, 4, QTableWidgetItem(f"Γé╣{total:,.2f}"))
 
     def update_rainbow_border(self):
         self.rainbow_hue = (self.rainbow_hue + 0.005) % 1.0
@@ -4079,7 +4078,7 @@ class LibraryDialog(QDialog):
         quote_btn_layout.addWidget(btn_delete_quote)
         quotes_layout.addLayout(quote_btn_layout)
         
-        tabs.addTab(quotes_tab, "📜 Quotes")
+        tabs.addTab(quotes_tab, "≡ƒô£ Quotes")
         
         layout.addWidget(tabs)
         self.load_quotes()
@@ -4160,8 +4159,8 @@ class ProcurementDialog(QDialog):
         vendors_tab = self.create_vendors_tab()
         po_tab = self.create_po_tab()
 
-        tabs.addTab(vendors_tab, "👥 Vendor Management")
-        tabs.addTab(po_tab, "📄 Purchase Orders")
+        tabs.addTab(vendors_tab, "≡ƒæÑ Vendor Management")
+        tabs.addTab(po_tab, "≡ƒôä Purchase Orders")
         
         layout.addWidget(tabs)
 
@@ -4171,13 +4170,13 @@ class ProcurementDialog(QDialog):
         
         # Action buttons
         btn_layout = QHBoxLayout()
-        btn_add = QPushButton("➕ Add New Vendor")
+        btn_add = QPushButton("Γ₧ò Add New Vendor")
         btn_add.setStyleSheet("background-color: #28a745; color: white; padding: 8px; border-radius: 5px;")
         btn_add.clicked.connect(self.add_vendor)
-        btn_edit = QPushButton("✏️ Edit Selected")
+        btn_edit = QPushButton("Γ£Å∩╕Å Edit Selected")
         btn_edit.setStyleSheet("background-color: #ffc107; color: black; padding: 8px; border-radius: 5px;")
         btn_edit.clicked.connect(self.edit_vendor)
-        btn_delete = QPushButton("❌ Delete Selected")
+        btn_delete = QPushButton("Γ¥î Delete Selected")
         btn_delete.setStyleSheet("background-color: #dc3545; color: white; padding: 8px; border-radius: 5px;")
         btn_delete.clicked.connect(self.delete_vendor)
         btn_layout.addWidget(btn_add)
@@ -4261,13 +4260,13 @@ class ProcurementDialog(QDialog):
 
         # Action buttons
         btn_layout = QHBoxLayout()
-        btn_create_po = QPushButton("➕ Create New Purchase Order")
+        btn_create_po = QPushButton("Γ₧ò Create New Purchase Order")
         btn_create_po.setStyleSheet("background-color: #007bff; color: white; padding: 8px; border-radius: 5px;")
         btn_create_po.clicked.connect(self.create_po)
-        btn_view_po = QPushButton("👁️ View / Edit Selected PO")
+        btn_view_po = QPushButton("≡ƒæü∩╕Å View / Edit Selected PO")
         btn_view_po.setStyleSheet("background-color: #6c757d; color: white; padding: 8px; border-radius: 5px;")
         btn_view_po.clicked.connect(self.view_po)
-        btn_receive_po = QPushButton("✅ Mark as Received & Update Stock")
+        btn_receive_po = QPushButton("Γ£à Mark as Received & Update Stock")
         btn_receive_po.setStyleSheet("background-color: #28a745; color: white; padding: 8px; border-radius: 5px;")
         btn_receive_po.clicked.connect(self.receive_po)
         btn_layout.addWidget(btn_create_po)
@@ -4313,7 +4312,7 @@ class ProcurementDialog(QDialog):
                 status_item.setForeground(QColor("#856404"))
             self.po_table.setItem(row, 3, status_item)
             
-            self.po_table.setItem(row, 4, QTableWidgetItem(f"₹{total or 0:.2f}"))
+            self.po_table.setItem(row, 4, QTableWidgetItem(f"Γé╣{total or 0:.2f}"))
         self.po_table.setSortingEnabled(True)
 
     def create_po(self):
@@ -4461,9 +4460,9 @@ class PurchaseOrderDialog(QDialog):
 
         # Bottom section: Totals and Save
         bottom_layout = QHBoxLayout()
-        self.total_label = QLabel("Total Amount: ₹0.00")
+        self.total_label = QLabel("Total Amount: Γé╣0.00")
         self.total_label.setObjectName("totalLabel")
-        btn_save_po = QPushButton("💾 Save Purchase Order")
+        btn_save_po = QPushButton("≡ƒÆ╛ Save Purchase Order")
         btn_save_po.setStyleSheet("background-color: #007bff; color: white; padding: 10px;")
         btn_save_po.clicked.connect(self.save_po)
         bottom_layout.addWidget(self.total_label)
@@ -4524,7 +4523,7 @@ class PurchaseOrderDialog(QDialog):
         self.items_table.setItem(row, 2, QTableWidgetItem(str(cost_price)))
         self.items_table.setItem(row, 3, QTableWidgetItem("0.00"))
 
-        btn_remove = QPushButton("❌")
+        btn_remove = QPushButton("Γ¥î")
         btn_remove.setStyleSheet("background-color: #dc3545; color: white; border-radius: 4px;")
         btn_remove.clicked.connect(self.remove_item)
         self.items_table.setCellWidget(row, 4, btn_remove)
@@ -4550,12 +4549,12 @@ class PurchaseOrderDialog(QDialog):
                 self.items_table.item(row, 3).setText(f"{(row_total or 0.0):.2f}")
             except (ValueError, AttributeError):
                 continue # Ignore rows with invalid data for now
-        self.total_label.setText(f"Total Amount: ₹{total_cost:,.2f}")
+        self.total_label.setText(f"Total Amount: Γé╣{total_cost:,.2f}")
 
     def save_po(self):
         vendor_id = self.vendor_combo.currentData()
         po_date = self.po_date.date().toString("yyyy-MM-dd")
-        total_amount = float(self.total_label.text().replace("Total Amount: ₹", "").replace(",", ""))
+        total_amount = float(self.total_label.text().replace("Total Amount: Γé╣", "").replace(",", ""))
 
         c = self.conn.cursor()
         try:
@@ -4702,7 +4701,7 @@ class QuickExpenseDialog(QDialog):
 class UserManualDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("📖 User Manual & Shortcuts")
+        self.setWindowTitle("≡ƒôû User Manual & Shortcuts")
         self.resize(800, 650)
         self.setStyleSheet("QDialog { background: white; }")
         
@@ -4713,7 +4712,7 @@ class UserManualDialog(QDialog):
         <h2 style='color:#e30613; text-align:center;'>TFC POS User Manual</h2>
         <p style='font-size:14px;'>Welcome to the TFC Point of Sale application. This manual outlines all essential keyboard shortcuts and features to help you navigate smoothly.</p>
         
-        <h3 style='color:#007bff;'>🚀 Global Keyboard Shortcuts</h3>
+        <h3 style='color:#007bff;'>≡ƒÜÇ Global Keyboard Shortcuts</h3>
         <ul style='font-size:14px;'>
             <li><b>Q</b>: Instantly open the Category selector on the POS or Quick KOT screen.</li>
             <li><b>P</b>: Instantly open the KOT dropdown on the POS.</li>
@@ -4722,7 +4721,7 @@ class UserManualDialog(QDialog):
             <li><b>Ctrl + K</b>: Open the Command Palette for quick actions.</li>
         </ul>
         
-        <h3 style='color:#007bff;'>⚡ Function Keys (F-Keys)</h3>
+        <h3 style='color:#007bff;'>ΓÜí Function Keys (F-Keys)</h3>
         <ul style='font-size:14px;'>
             <li><b>F1</b>: Clear the current order.</li>
             <li><b>F2</b>: Focus the Product Search Bar.</li>
@@ -4736,7 +4735,7 @@ class UserManualDialog(QDialog):
             <li><b>F10</b>: Open Customer Insights.</li>
         </ul>
         
-        <h3 style='color:#007bff;'>🧾 KOT Queue Dashboard Shortcuts</h3>
+        <h3 style='color:#007bff;'>≡ƒº╛ KOT Queue Dashboard Shortcuts</h3>
         <p style='font-size:14px;'><i>(Use arrow keys to select a row, then press these keys)</i></p>
         <ul style='font-size:14px;'>
             <li><b>N</b>: Create a New Quick KOT.</li>
@@ -4745,7 +4744,7 @@ class UserManualDialog(QDialog):
             <li><b>C</b>: Cancel the selected KOT.</li>
         </ul>
         
-        <h3 style='color:#007bff;'>⚙️ Navigation & Tips</h3>
+        <h3 style='color:#007bff;'>ΓÜÖ∩╕Å Navigation & Tips</h3>
         <ul style='font-size:14px;'>
             <li><b>Smart Shortcuts</b>: Single-letter shortcuts (like Q, P, L, K) automatically disable themselves while you are typing a customer's name or searching for a product, so they never interrupt your typing!</li>
             <li><b>Spatial Navigation</b>: You can use your Up, Down, Left, and Right arrow keys to smoothly bounce between the product list, the cart, and the payment section without using a mouse.</li>
@@ -4763,7 +4762,7 @@ class QuickKOTDialog(QDialog):
     def __init__(self, conn, parent=None):
         super().__init__(parent)
         self.conn = conn
-        self.setWindowTitle("⚡ Quick KOT Generation")
+        self.setWindowTitle("ΓÜí Quick KOT Generation")
         self.resize(1000, 700)
         self.setStyleSheet("QDialog { background: #f0f2f5; }")
         self.setup_ui()
@@ -4788,7 +4787,7 @@ class QuickKOTDialog(QDialog):
         self.cat_filter.currentIndexChanged.connect(self.load_products)
         
         self.product_search_bar = QLineEdit()
-        self.product_search_bar.setPlaceholderText("🔍 Search Products...")
+        self.product_search_bar.setPlaceholderText("≡ƒöì Search Products...")
         self.product_search_bar.setStyleSheet("border: 1px solid #ccc; padding: 5px; font-size: 14px; font-weight: bold;")
         self.product_search_bar.textChanged.connect(self.filter_products)
         
@@ -4849,7 +4848,7 @@ class QuickKOTDialog(QDialog):
         right_layout.addWidget(self.items_table)
         
         # Generate Button
-        self.btn_generate = QPushButton("🧾 Generate Quick KOT (G)")
+        self.btn_generate = QPushButton("≡ƒº╛ Generate Quick KOT (G)")
         self.btn_generate.setStyleSheet("background: #007bff; color: white; padding: 12px; font-size: 16px; font-weight: bold;")
         self.btn_generate.clicked.connect(self.generate_kot)
         right_layout.addWidget(self.btn_generate)
@@ -4954,7 +4953,7 @@ class QuickKOTDialog(QDialog):
         action_widget = QWidget()
         action_layout = QHBoxLayout(action_widget)
         action_layout.setContentsMargins(0, 0, 0, 0)
-        btn_delete = QPushButton("🗑️")
+        btn_delete = QPushButton("≡ƒùæ∩╕Å")
         btn_delete.setStyleSheet("background: #dc3545; color: white; border: none; padding: 5px; margin: 2px;")
         action_layout.addWidget(btn_delete)
         self.items_table.setCellWidget(row, 2, action_widget)
@@ -5066,11 +5065,11 @@ class EndOfDayDialog(QDialog):
         <h2>End of Day - {today_str}</h2>
         <hr>
         <p style='font-size: 14pt;'><b>Total Orders:</b> {orders}</p>
-        <p style='font-size: 14pt;'><b>Total Sales:</b> ₹{(sales or 0.0):.2f}</p>
-        <p style='font-size: 14pt;'><b>Total Expenses:</b> ₹{(expenses or 0.0):.2f}</p>
-        <p style='font-size: 14pt;'><b>Total Discounts Given:</b> ₹{(discounts or 0.0):.2f}</p>
+        <p style='font-size: 14pt;'><b>Total Sales:</b> Γé╣{(sales or 0.0):.2f}</p>
+        <p style='font-size: 14pt;'><b>Total Expenses:</b> Γé╣{(expenses or 0.0):.2f}</p>
+        <p style='font-size: 14pt;'><b>Total Discounts Given:</b> Γé╣{(discounts or 0.0):.2f}</p>
         <hr>
-        <p style='font-size: 18pt; color: {'green' if profit >= 0 else 'red'};'><b>Net Profit: ₹{(profit or 0.0):.2f}</b></p>
+        <p style='font-size: 18pt; color: {'green' if profit >= 0 else 'red'};'><b>Net Profit: Γé╣{(profit or 0.0):.2f}</b></p>
         """
         lbl = QLabel(summary_text)
         lbl.setAlignment(Qt.AlignTop)
@@ -5096,7 +5095,7 @@ class EndOfDayDialog(QDialog):
             log_table.setItem(row, 0, QTableWidgetItem(r[0][11:16]))
             log_table.setItem(row, 1, QTableWidgetItem(r[1]))
             log_table.setItem(row, 2, QTableWidgetItem(r[2] if r[2] else "Walk-in"))
-            log_table.setItem(row, 3, QTableWidgetItem(f"₹{(r[3] or 0.0):.2f}"))
+            log_table.setItem(row, 3, QTableWidgetItem(f"Γé╣{(r[3] or 0.0):.2f}"))
             
         c.execute("SELECT date, 'Expense', category || ' - ' || description, amount FROM expenses WHERE date(date) = ? ORDER BY date DESC", (today_str,))
         for r in c.fetchall():
@@ -5105,7 +5104,7 @@ class EndOfDayDialog(QDialog):
             log_table.setItem(row, 0, QTableWidgetItem(r[0][11:16]))
             log_table.setItem(row, 1, QTableWidgetItem(r[1]))
             log_table.setItem(row, 2, QTableWidgetItem(r[2]))
-            log_table.setItem(row, 3, QTableWidgetItem(f"-₹{(r[3] or 0.0):.2f}"))
+            log_table.setItem(row, 3, QTableWidgetItem(f"-Γé╣{(r[3] or 0.0):.2f}"))
             
         log_layout.addWidget(log_table)
         tabs.addTab(log_tab, "Activity Log")
@@ -5127,68 +5126,12 @@ def show_ai_forecast(parent, conn):
                 except: pass
         if totals:
             avg = sum(totals) / len(totals)
-            msg = f"Based on past {datetime.date.today().strftime('%A')}s, your projected sales for today is: ₹{(avg or 0.0):.2f} 🚀"
+            msg = f"Based on past {datetime.date.today().strftime('%A')}s, your projected sales for today is: Γé╣{(avg or 0.0):.2f} ≡ƒÜÇ"
         else:
-            msg = "Not enough historical data for this day of the week yet! Keep selling! 💼"
-        QMessageBox.information(parent, "AI Sales Forecast 🔮", msg)
+            msg = "Not enough historical data for this day of the week yet! Keep selling! ≡ƒÆ╝"
+        QMessageBox.information(parent, "AI Sales Forecast ≡ƒö«", msg)
     except Exception as e:
         QMessageBox.warning(parent, "Error", str(e))
-
-
-class PollingWorker(QThread):
-    def __init__(self, db, shop_id, signals):
-        super().__init__()
-        self.db = db
-        self.shop_id = shop_id
-        self.signals = signals
-        self.running = True
-        self.known_orders = {}
-        self.known_bills = set()
-        self.known_kots = set()
-        
-    def run(self):
-        import time
-        while self.running:
-            try:
-                # Poll orders
-                orders = self.db.run_query(f"shops/{self.shop_id}/web_orders", 'status', 'IN', ['pending', 'preparing'])
-                current_order_ids = set()
-                for o in orders:
-                    oid = o['id']
-                    current_order_ids.add(oid)
-                    if oid not in self.known_orders:
-                        self.known_orders[oid] = o
-                        self.signals.new_order.emit(o)
-                    elif self.known_orders[oid] != o:
-                        self.known_orders[oid] = o
-                        self.signals.update_order.emit(o)
-                        
-                # Check for removed orders
-                for oid in list(self.known_orders.keys()):
-                    if oid not in current_order_ids:
-                        del self.known_orders[oid]
-                        self.signals.remove_order.emit(oid)
-
-                # Poll bills
-                bills = self.db.run_query(f"shops/{self.shop_id}/bills", 'source', 'EQUAL', 'web_admin')
-                for b in bills:
-                    bid = b['id']
-                    if bid not in self.known_bills:
-                        self.known_bills.add(bid)
-                        self.signals.new_remote_bill.emit(b)
-
-                # Poll kots
-                kots = self.db.run_query(f"shops/{self.shop_id}/kots", 'source', 'EQUAL', 'web_admin')
-                for k in kots:
-                    kid = k['id']
-                    if kid not in self.known_kots:
-                        self.known_kots.add(kid)
-                        self.signals.new_remote_kot.emit(k)
-                        
-            except Exception as e:
-                print("Polling error:", e)
-                
-            time.sleep(10)
 
 class SyncWorker(QThread):
     """Worker thread for syncing data to Firestore to avoid freezing the UI."""
@@ -5199,9 +5142,16 @@ class SyncWorker(QThread):
         try:
             self.status_update.emit("Initializing...")
             
-            # 1. Firebase is now initialized via REST API in firestore_rest
+            # 1. Initialize Firebase
+            key_path = os.path.join(BASE_DIR, "serviceAccountKey.json")
+            if not os.path.exists(key_path):
+                raise FileNotFoundError("`serviceAccountKey.json` not found in the application directory.")
             
-            from firestore_rest import firestore as db
+            if not firebase_admin._apps:
+                cred = credentials.Certificate(key_path)
+                firebase_admin.initialize_app(cred)
+            
+            db = firestore.client()
             local_conn = get_conn()
             real_db_conn = local_conn._real if hasattr(local_conn, '_real') else local_conn
             
@@ -5211,7 +5161,7 @@ class SyncWorker(QThread):
             products = products.replace({float('nan'): None})
             prod_batch = db.batch()
             for index, row in products.iterrows():
-                doc_ref = db.collection(f'shops/{CONFIG["shop_id"]}/products').document(str(row['id']))
+                doc_ref = db.collection('products').document(str(row['id']))
                 prod_batch.set(doc_ref, row.to_dict())
             prod_batch.commit()
 
@@ -5223,7 +5173,7 @@ class SyncWorker(QThread):
             for index, row in bills.iterrows():
                 bill_dict = row.to_dict()
                 bill_dict['items'] = json.loads(bill_dict.get('items', '[]')) # Store as array of maps
-                doc_ref = db.collection(f'shops/{CONFIG["shop_id"]}/bills').document(row['bill_no'])
+                doc_ref = db.collection('bills').document(row['bill_no'])
                 bill_batch.set(doc_ref, bill_dict)
             bill_batch.commit()
 
@@ -5233,7 +5183,7 @@ class SyncWorker(QThread):
             expenses = expenses.replace({float('nan'): None})
             exp_batch = db.batch()
             for index, row in expenses.iterrows():
-                doc_ref = db.collection(f'shops/{CONFIG["shop_id"]}/expenses').document(str(row['id']))
+                doc_ref = db.collection('expenses').document(str(row['id']))
                 exp_batch.set(doc_ref, row.to_dict())
             exp_batch.commit()
 
@@ -5259,202 +5209,80 @@ def trigger_cloud_sync(parent, conn):
 class FirstTimeSetupScreen(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("SmartPOS - First Time Setup")
-        self.showFullScreen()
-        
+        self.setWindowTitle("TFC - First Time Setup")
+        self.setFixedSize(500, 480)
+        self.setStyleSheet("""
+            QDialog { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #1a1a2e, stop:1 #16213e); }
+            QLabel { color: white; font-size: 11pt; }
+            QLineEdit, QComboBox { padding: 10px; border: 2px solid #444; border-radius: 8px; background: #0f3460; color: white; font-size: 11pt; }
+            QLineEdit:focus, QComboBox:focus { border: 2px solid #e30613; }
+            QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 25px;
+                border-left-width: 1px;
+                border-left-color: #444;
+                border-left-style: solid;
+            }
+            QComboBox QAbstractItemView { background: #0f3460; color: white; selection-background-color: #e30613; }
+            QPushButton#createBtn { background: #e30613; color: white; padding: 12px; border-radius: 8px; font-size: 12pt; font-weight: bold; }
+            QPushButton#createBtn:hover, QPushButton#createBtn:focus { background: #ff1a2e; }
+        """)
         self.setup_created = False
         self.init_ui()
 
     def init_ui(self):
-        # Main layout covering the whole screen
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-        
-        # Create a base widget that holds everything
-        self.base_widget = QWidget(self)
-        main_layout.addWidget(self.base_widget)
-        
-        base_layout = QGridLayout(self.base_widget)
-        base_layout.setContentsMargins(0, 0, 0, 0)
-        
-        # 1. Background Image with Blur
-        self.bg_label = QLabel(self.base_widget)
-        bg_path = os.path.join(BASE_DIR, "splash_bg.jpg").replace('\\', '/')
-        self.bg_label.setPixmap(QPixmap(bg_path).scaled(
-            QApplication.primaryScreen().size(), 
-            Qt.KeepAspectRatioByExpanding, 
-            Qt.SmoothTransformation
-        ))
-        self.bg_label.setScaledContents(False)
-        self.bg_label.setAlignment(Qt.AlignCenter)
-        
-        # Apply blur to background
-        blur_effect = QGraphicsBlurEffect()
-        blur_effect.setBlurRadius(15)
-        self.bg_label.setGraphicsEffect(blur_effect)
-        
-        base_layout.addWidget(self.bg_label, 0, 0)
-        
-        # 2. Overlay color to make text readable (dark translucent)
-        self.overlay = QWidget(self.base_widget)
-        self.overlay.setStyleSheet("background-color: rgba(15, 20, 35, 0.6);")
-        base_layout.addWidget(self.overlay, 0, 0)
-        
-        # 3. Center Container Layout
-        center_layout = QVBoxLayout()
-        center_layout.setAlignment(Qt.AlignCenter)
-        
-        # Setup Panel (The Floating Form)
-        self.setup_panel = QWidget()
-        self.setup_panel.setObjectName("setupPanel")
-        self.setup_panel.setFixedWidth(650)
-        
-        self.setup_panel.setStyleSheet("""
-            QWidget#setupPanel {{
-                background: rgba(22, 33, 62, 0.85);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                border-radius: 20px;
-            }}
-            QLabel {{ color: white; font-family: 'Segoe UI'; }}
-            QLineEdit {{ 
-                padding: 15px 20px; 
-                border: 2px solid rgba(255, 255, 255, 0.1); 
-                border-radius: 12px; 
-                background: rgba(0, 0, 0, 0.4); 
-                color: white; 
-                font-size: 14pt; 
-            }}
-            QLineEdit:focus {{ 
-                border: 2px solid #e30613; 
-                background: rgba(0, 0, 0, 0.6); 
-            }}
-            QPushButton#createBtn {{ 
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #e30613, stop:1 #ff1a2e); 
-                color: white; 
-                padding: 18px; 
-                border-radius: 12px; 
-                font-size: 16pt; 
-                font-weight: bold; 
-            }}
-            QPushButton#createBtn:hover {{ 
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #ff1a2e, stop:1 #ff4d5a); 
-            }}
-            QPushButton#exitBtn {{
-                background: transparent;
-                color: rgba(255, 255, 255, 0.5);
-                font-size: 12pt;
-                border: none;
-                padding: 10px;
-            }}
-            QPushButton#exitBtn:hover {{
-                color: white;
-            }}
-        """)
-        
-        panel_layout = QVBoxLayout(self.setup_panel)
-        panel_layout.setSpacing(25)
-        panel_layout.setContentsMargins(50, 50, 50, 50)
-        
-        # Logo/Title
-        title = QLabel("SmartPOS")
-        title.setFont(QFont("Segoe UI", 32, QFont.Bold))
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("color: #e30613;")
-        panel_layout.addWidget(title)
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        layout.setContentsMargins(40, 30, 40, 30)
 
-        subtitle = QLabel("Initial SaaS Registration")
-        subtitle.setFont(QFont("Segoe UI", 16))
+        # Logo/Title
+        title = QLabel("≡ƒÉö TFC POS - Initial Setup")
+        title.setFont(QFont("Segoe UI", 18, QFont.Bold))
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("color: #e30613; font-size: 18pt;")
+        layout.addWidget(title)
+
+        subtitle = QLabel("Create your Super Admin account to get started")
         subtitle.setAlignment(Qt.AlignCenter)
-        subtitle.setStyleSheet("color: #e0e0e0; margin-bottom: 20px;")
-        panel_layout.addWidget(subtitle)
+        subtitle.setStyleSheet("color: #aaa; font-size: 10pt;")
+        layout.addWidget(subtitle)
+
+        layout.addSpacing(10)
 
         self.display_name = QLineEdit()
-        self.display_name.setPlaceholderText("Shop Name / Display Name")
-        panel_layout.addWidget(self.display_name)
+        self.display_name.setPlaceholderText("Display Name (e.g. Owner Name)")
+        layout.addWidget(self.display_name)
 
         self.email = QLineEdit()
-        self.email.setPlaceholderText("Email (Login ID)")
-        panel_layout.addWidget(self.email)
+        self.email.setPlaceholderText("Email (this will be your Login ID)")
+        layout.addWidget(self.email)
 
         self.password = QLineEdit()
-        self.password.setPlaceholderText("Password (min 6 chars)")
+        self.password.setPlaceholderText("Password (min 6 characters)")
         self.password.setEchoMode(QLineEdit.Password)
-        panel_layout.addWidget(self.password)
+        layout.addWidget(self.password)
 
         self.confirm_password = QLineEdit()
         self.confirm_password.setPlaceholderText("Confirm Password")
         self.confirm_password.setEchoMode(QLineEdit.Password)
-        panel_layout.addWidget(self.confirm_password)
-
-        self.license_key = QLineEdit()
-        self.license_key.setPlaceholderText("License Key (Required for Cloud)")
-        panel_layout.addWidget(self.license_key)
-        
-        # Location Layout
-        loc_layout = QHBoxLayout()
-        self.business_address = QLineEdit()
-        self.business_address.setPlaceholderText("Business Address / City / Region")
-        loc_layout.addWidget(self.business_address)
-        
-        self.btn_locate = QPushButton("📍 Locate Me")
-        self.btn_locate.setCursor(Qt.PointingHandCursor)
-        self.btn_locate.setStyleSheet("background-color: #0f3460; font-size: 10pt; padding: 10px;")
-        self.btn_locate.clicked.connect(self.auto_locate)
-        loc_layout.addWidget(self.btn_locate)
-        
-        panel_layout.addLayout(loc_layout)
+        layout.addWidget(self.confirm_password)
 
         self.error_label = QLabel("")
-        self.error_label.setStyleSheet("color: #ff4d4d; font-size: 12pt; font-weight: bold;")
+        self.error_label.setStyleSheet("color: #ff6b6b; font-size: 9pt;")
         self.error_label.setAlignment(Qt.AlignCenter)
-        panel_layout.addWidget(self.error_label)
+        layout.addWidget(self.error_label)
 
-        btn_create = QPushButton("Register & Launch App")
+        btn_create = QPushButton("Create Super Admin Account")
         btn_create.setObjectName("createBtn")
-        btn_create.setCursor(Qt.PointingHandCursor)
         btn_create.clicked.connect(self.create_account)
-        panel_layout.addWidget(btn_create)
-        
-        btn_exit = QPushButton("Exit Setup")
-        btn_exit.setObjectName("exitBtn")
-        btn_exit.setCursor(Qt.PointingHandCursor)
-        btn_exit.clicked.connect(sys.exit)
-        panel_layout.addWidget(btn_exit)
-
-        center_layout.addWidget(self.setup_panel)
-        base_layout.addLayout(center_layout, 0, 0)
-
-    def auto_locate(self):
-        try:
-            import requests
-            self.btn_locate.setText("Locating...")
-            QApplication.processEvents()
-            res = requests.get('https://ipinfo.io/json', timeout=5).json()
-            city = res.get('city', '')
-            region = res.get('region', '')
-            country = res.get('country', '')
-            loc = res.get('loc', '')
-            
-            addr = f"{city}, {region}, {country}" if city else "Unknown Location"
-            self.business_address.setText(addr)
-            
-            # Store lat/long in class variables to save later
-            self.lat_long = loc
-            self.region_name = region
-            self.city_name = city
-            self.btn_locate.setText("📍 Located!")
-        except Exception as e:
-            self.btn_locate.setText("📍 Locate Failed")
-            self.error_label.setText("Could not fetch location.")
+        layout.addWidget(btn_create)
 
     def create_account(self):
         name = self.display_name.text().strip()
         email = self.email.text().strip()
         pwd = self.password.text()
         confirm = self.confirm_password.text()
-        license_key = getattr(self, 'license_key', None)
-        l_key = license_key.text().strip() if license_key else ""
 
         if not name:
             self.error_label.setText("Please enter a display name.")
@@ -5468,183 +5296,122 @@ class FirstTimeSetupScreen(QDialog):
         if pwd != confirm:
             self.error_label.setText("Passwords do not match.")
             return
-        if not l_key:
-            self.error_label.setText("License Key is required.")
-            return
-
-        def set_status(msg, color="#6cb4ee"):
-            self.error_label.setText(msg)
-            self.error_label.setStyleSheet(f"color: {color}; font-size: 12pt; font-weight: bold;")
-            QApplication.processEvents()
-
-        def set_error(msg):
-            set_status(msg, "#ff4d4d")
-
-        set_status("Step 1/5: Validating License Key...")
 
         try:
-            from firestore_rest import firestore as db
-
-            # STEP 1: Validate license BEFORE touching Firebase Auth
-            key_doc = db.get_document(f"license_keys/{l_key}")
-            if not key_doc:
-                set_error("Invalid License Key. Please check and try again.")
-                return
-
-            if key_doc.get("is_used") == True:
-                set_error("This License Key has already been used.")
-                return
-
-            intended_email = key_doc.get("email_intended", "")
-            if intended_email and intended_email.lower() != email.lower():
-                set_error("This is not your registered email for this license.")
-                return
-
-            # STEP 2: Prepare shop_id
-            set_status("Step 2/5: Preparing shop identity...")
-            shop_id = CONFIG.get('shop_id')
-            if not shop_id:
-                import uuid
-                shop_id = str(uuid.uuid4())
-                CONFIG['shop_id'] = shop_id
-                save_config()
-
-            # STEP 3: Firebase Auth — create or resume
-            set_status("Step 3/5: Creating cloud account...")
-            auth_created = False
-            try:
-                db.signup(email, pwd)
-                auth_created = True
-            except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 400 and "EMAIL_EXISTS" in e.response.text:
-                    set_status("Step 3/5: Account exists, resuming incomplete registration...")
-                    try:
-                        db.login(email, pwd)
-                        auth_created = True
-                    except requests.exceptions.HTTPError as login_err:
-                        if login_err.response.status_code == 400:
-                            set_error("This email is already registered with a different password. Use that password or reset it via forgot password.")
-                        else:
-                            set_error(f"Login failed: HTTP {login_err.response.status_code}")
-                        return
-                elif e.response.status_code == 400 and "WEAK_PASSWORD" in e.response.text:
-                    set_error("Password is too weak. Use at least 6 characters with letters and numbers.")
-                    return
-                elif e.response.status_code == 400 and "INVALID_EMAIL" in e.response.text:
-                    set_error("Invalid email format rejected by server.")
-                    return
-                else:
-                    try:
-                        import json as _json
-                        err_msg = _json.loads(e.response.text).get("error", {}).get("message", "Unknown error")
-                    except Exception:
-                        err_msg = e.response.text[:80]
-                    set_error(f"Cloud Auth Error: {err_msg}")
-                    return
-
-            if not auth_created:
-                set_error("Could not authenticate with cloud. Registration aborted.")
-                return
-
-            # STEP 4: Write all Firestore documents now that we are authenticated
-            set_status("Step 4/5: Saving registration to cloud database...")
-            now_iso = datetime.datetime.now().isoformat()
-            addr_text = self.business_address.text().strip() if hasattr(self, 'business_address') else ""
-            lat_str, lon_str = "", ""
-            if getattr(self, 'lat_long', ''):
-                parts = self.lat_long.split(',')
-                lat_str = parts[0] if parts else ''
-                lon_str = parts[1] if len(parts) > 1 else ''
-
-            firestore_errors = []
-
-            try:
-                db.set_document(f"license_keys/{l_key}", {
-                    "is_used": True,
-                    "shop_id": shop_id,
-                    "email": email,
-                    "claimed_at": now_iso,
-                    "used_by_shop": shop_id,
-                    "used_at": now_iso,
-                    "shop_name_intended": key_doc.get("shop_name_intended", ""),
-                    "owner_name": key_doc.get("owner_name", ""),
-                    "phone": key_doc.get("phone", "")
-                })
-            except Exception as e_key:
-                firestore_errors.append(f"License key update failed: {str(e_key)[:80]}")
-                log_exception(e_key)
-
-            try:
-                db.set_document(f"registered_shops/{shop_id}", {
-                    "shop_name": name,
-                    "email": email,
-                    "shop_id": shop_id,
-                    "distributor_id": key_doc.get("distributor_id", "direct"),
-                    "package_type": key_doc.get("package_type", "Basic"),
-                    "business_address": addr_text,
-                    "latitude": lat_str,
-                    "longitude": lon_str,
-                    "city": getattr(self, 'city_name', ''),
-                    "region": getattr(self, 'region_name', ''),
-                    "created_at": now_iso
-                })
-            except Exception as e_shop:
-                firestore_errors.append(f"Shop registration failed: {str(e_shop)[:80]}")
-                log_exception(e_shop)
-
-            try:
-                db.set_document(f"shops/{shop_id}", {
-                    "shop_name": name,
-                    "email": email,
-                    "initialized": True,
-                    "created_at": now_iso
-                })
-            except Exception as e_init:
-                firestore_errors.append(f"Shop init failed: {str(e_init)[:80]}")
-                log_exception(e_init)
-
-            # STEP 5: Insert into local SQLite — ALWAYS runs regardless of Firestore status
-            set_status("Step 5/5: Saving local account...")
-            try:
-                conn = get_conn()
-                c = conn.cursor()
-                pwd_hash = hash_password(pwd)
-                c.execute("SELECT id FROM users WHERE email = ?", (email,))
-                if not c.fetchone():
-                    c.execute("""INSERT INTO users (email, password_hash, display_name, role, created_at)
-                                 VALUES (?, ?, ?, 'super_admin', ?)""", (email, pwd_hash, name, now_iso))
-                    conn.commit()
-                conn.close()
-            except Exception as e_local:
-                log_exception(e_local)
-
+            conn = get_conn()
+            c = conn.cursor()
+            pwd_hash = hash_password(pwd)
+            now = datetime.datetime.now().isoformat()
+            c.execute("""INSERT INTO users (email, password_hash, display_name, role, created_at)
+                         VALUES (?, ?, ?, 'super_admin', ?)""", (email, pwd_hash, name, now))
+            conn.commit()
+            conn.close()
             self.setup_created = True
-
-            if firestore_errors:
-                warn = "Account created successfully, but some cloud data could not be saved:\n\n"
-                warn += "\n".join(firestore_errors)
-                warn += f"\n\nYou can still login with:\n  Email: {email}\n  Shop ID: {shop_id}\n\nCloud data will resync on next launch."
-                QMessageBox.warning(self, "Registration Complete (with warnings)", warn)
-            else:
-                QMessageBox.information(self, "Registration Complete",
-                    f"Registration Successful!\n\nLogin ID: {email}\nShop ID: {shop_id}\n\nThe app will now start.")
+            QMessageBox.information(self, "Success", f"Super Admin account created!\nLogin ID: {email}\n\nThe app will now restart.")
             self.accept()
         except Exception as e:
             log_exception(e)
-            self.error_label.setText(f"Local save failed: {e}")
-            self.error_label.setStyleSheet("color: #ff4d4d; font-size: 12pt; font-weight: bold;")
-
+            if "UNIQUE" in str(e):
+                self.error_label.setText("This email is already registered.")
+            else:
+                self.error_label.setText(f"Error: {e}")
 
 
 # ================================
 # LOGIN SCREEN
 # ================================
-class LoginScreen(ModernLoginScreen):
+class LoginScreen(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setWindowTitle("TFC POS - Login")
+        self.setFixedSize(800, 600)
         
-        self.btn_create_account.clicked.connect(self.go_to_create_account)
-        self.btn_clear_history.clicked.connect(self.clear_login_history)
+        bg_path = os.path.join(BASE_DIR, "splash_bg.jpg").replace('\\', '/')
+        self.setStyleSheet(f"""
+            QDialog {{ 
+                background-image: url('{bg_path}'); 
+                background-position: center;
+                background-repeat: no-repeat;
+            }}
+            QWidget#loginPanel {{
+                background: rgba(22, 33, 62, 0.9);
+                border-radius: 15px;
+            }}
+            QLabel {{ color: white; font-family: 'Segoe UI'; font-weight: bold; }}
+            QLineEdit, QComboBox {{ 
+                padding: 15px; 
+                border: 2px solid #444; 
+                border-radius: 10px; 
+                background: rgba(15, 52, 96, 0.9); 
+                color: white; 
+                font-size: 14pt; 
+                min-height: 30px;
+            }}
+            QLineEdit:focus, QComboBox:focus {{ border: 2px solid #e30613; }}
+            QComboBox::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 35px;
+                border-left-width: 1px;
+                border-left-color: #444;
+                border-left-style: solid;
+            }}
+            QComboBox QAbstractItemView {{ 
+                background: #0f3460; 
+                color: white; 
+                font-size: 14pt;
+                selection-background-color: #e30613; 
+            }}
+            QPushButton#loginBtn {{ 
+                background: #e30613; 
+                color: white; 
+                padding: 18px; 
+                border-radius: 10px; 
+                font-size: 16pt; 
+                font-weight: bold; 
+            }}
+            QPushButton#loginBtn:hover, QPushButton#loginBtn:focus {{ background: #ff1a2e; }}
+            QPushButton#linkBtn {{ 
+                background: transparent; 
+                color: #6cb4ee; 
+                border: none; 
+                font-size: 11pt; 
+                text-decoration: underline; 
+            }}
+            QPushButton#linkBtn:hover, QPushButton#linkBtn:focus {{ color: #e30613; }}
+        """)
+        self.logged_in_user = None
+        self.init_ui()
+
+    def init_ui(self):
+        main_layout = QVBoxLayout(self)
+        main_layout.setAlignment(Qt.AlignCenter)
+        
+        self.login_panel = QWidget()
+        self.login_panel.setObjectName("loginPanel")
+        self.login_panel.setFixedWidth(500)
+        
+        layout = QVBoxLayout(self.login_panel)
+        layout.setSpacing(25)
+        layout.setContentsMargins(40, 40, 40, 40)
+        
+        main_layout.addWidget(self.login_panel)
+
+        title = QLabel("≡ƒÉö TFC POS")
+        title.setFont(QFont("Segoe UI", 32, QFont.Bold))
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("color: #e30613; font-size: 32pt;")
+        layout.addWidget(title)
+
+        subtitle = QLabel("Secure Staff Login")
+        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setStyleSheet("color: #aaa; font-size: 14pt; margin-bottom: 10px;")
+        layout.addWidget(subtitle)
+
+        self.email = QComboBox()
+        self.email.setEditable(True)
+        self.email.lineEdit().setPlaceholderText("Email Address / Login ID")
+        self.email.lineEdit().setClearButtonEnabled(True)
         
         # Load history
         self.history_file = os.path.join(BASE_DIR, "login_history.json")
@@ -5654,144 +5421,89 @@ class LoginScreen(ModernLoginScreen):
                 import json
                 with open(self.history_file, 'r') as f:
                     self.login_history = json.load(f)
-                    for em in self.login_history[:5]: # Max 5 accounts
-                        card = RecentAccountCard(em)
-                        card.clicked.connect(lambda checked, e=em: self.fill_email(e))
-                        self.history_layout.addWidget(card)
+                    for em in self.login_history:
+                        self.email.addItem(em)
             except Exception:
                 pass
                 
-    def fill_email(self, email_str):
-        self.email.setText(email_str)
-        self.password.setFocus()
+        layout.addWidget(self.email)
 
-    def trigger_login(self):
-        self.attempt_login()
+        self.password = QLineEdit()
+        self.password.setPlaceholderText("Password")
+        self.password.setEchoMode(QLineEdit.Password)
+        self.password.returnPressed.connect(self.attempt_login)
+        layout.addWidget(self.password)
 
-    def go_to_create_account(self):
-        self.create_new_account = True
-        self.accept()
+        self.error_label = QLabel("")
+        self.error_label.setStyleSheet("color: #ff6b6b; font-size: 11pt;")
+        self.error_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.error_label)
+        
+        layout.addStretch()
+
+        btn_login = QPushButton("LOGIN")
+        btn_login.setObjectName("loginBtn")
+        btn_login.clicked.connect(self.attempt_login)
+        layout.addWidget(btn_login)
+
+        # Bottom links layout
+        links_layout = QHBoxLayout()
+        links_layout.setSpacing(20)
+        
+        btn_clear_history = QPushButton("Clear Login History")
+        btn_clear_history.setObjectName("linkBtn")
+        btn_clear_history.clicked.connect(self.clear_login_history)
+        links_layout.addWidget(btn_clear_history, alignment=Qt.AlignCenter)
+        
+        btn_change_pwd = QPushButton("Change Password")
+        btn_change_pwd.setObjectName("linkBtn")
+        btn_change_pwd.clicked.connect(self.open_change_password)
+        links_layout.addWidget(btn_change_pwd, alignment=Qt.AlignCenter)
+        
+        layout.addLayout(links_layout)
 
     def clear_login_history(self):
         import json
         self.login_history = []
-        self.email.setText("")
-        
-        # Clear cards
-        while self.history_layout.count():
-            child = self.history_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
-                
+        self.email.clear()
+        self.email.setCurrentText("")
         try:
             with open(self.history_file, 'w') as f:
                 json.dump(self.login_history, f)
         except:
             pass
-        self.email.setFocus()
+        self.email.lineEdit().setFocus()
 
     def attempt_login(self):
-        email = self.email.text().strip()
+        email = self.email.currentText().strip()
         pwd = self.password.text()
 
         if not email or not pwd:
-            self.overlay.hide()
             self.error_label.setText("Please enter email and password.")
             return
-
-        self.overlay.show_loading("Authenticating...")
-        self.error_label.setText("")
-        self.error_label.setStyleSheet("color: #6cb4ee; font-size: 11pt;")
-        QApplication.processEvents()
 
         try:
             conn = get_conn()
             c = conn.cursor()
             c.execute("SELECT id, email, password_hash, display_name, role, is_active FROM users WHERE email = ?", (email,))
             row = c.fetchone()
-            
-            # If not found locally, or invalid password locally, fallback to Cloud Auth!
-            fallback_to_cloud = False
-            
+
             if not row:
-                fallback_to_cloud = True
-            else:
-                user_id, user_email, pwd_hash, display_name, role, is_active = row
-                if not is_active:
-                    self.overlay.hide()
-                    self.error_label.setText("This account has been disabled. Contact admin.")
-                    self.error_label.setStyleSheet("color: #ff6b6b; font-size: 11pt;")
-                    conn.close()
-                    return
-                if not verify_password(pwd, pwd_hash):
-                    fallback_to_cloud = True
-                    
-            # Always try to authenticate with cloud to get the Auth Token for Firestore!
-            try:
-                from firestore_rest import firestore as db
-                self.overlay.show_loading("Authenticating via Cloud...")
-                QApplication.processEvents()
-                auth_data = db.login(email, pwd)
-                
-                if fallback_to_cloud:
-                    self.overlay.show_loading("Syncing Shop Profile...")
-                    QApplication.processEvents()
-                    
-                    # Find shop ID in registered_shops
-                    shops = db.run_query('registered_shops', 'email', 'EQUAL', email)
-                    if not shops:
-                        self.overlay.hide()
-                        self.error_label.setText("Account found, but no shop associated.")
-                        self.error_label.setStyleSheet("color: #ff6b6b; font-size: 11pt;")
-                        conn.close()
-                        return
-                    
-                    shop_data = shops[0]
-                    shop_id = shop_data.get('id')
-                    shop_name = shop_data.get('shop_name', 'Shop Owner')
-                    
-                    # Store in CONFIG
-                    CONFIG['shop_id'] = shop_id
-                    save_config()
-                    
-                    # Auto-provision local user if they don't exist
-                    if not row:
-                        pwd_hash = hash_password(pwd)
-                        now = datetime.datetime.now().isoformat()
-                        c.execute("INSERT INTO users (email, password_hash, display_name, role, created_at) VALUES (?, ?, ?, 'super_admin', ?)", (email, pwd_hash, shop_name, now))
-                        conn.commit()
-                        c.execute("SELECT id, email, password_hash, display_name, role, is_active FROM users WHERE email = ?", (email,))
-                        row = c.fetchone()
-                        
-                    # If password changed on cloud but row existed, update local password
-                    if row and fallback_to_cloud:
-                        # Re-hash password locally to keep in sync
-                        new_hash = hash_password(pwd)
-                        c.execute("UPDATE users SET password_hash = ? WHERE email = ?", (new_hash, email))
-                        conn.commit()
-                        
-            except requests.exceptions.HTTPError as e:
-                if fallback_to_cloud:
-                    if e.response.status_code == 400:
-                        self.overlay.hide()
-                        self.error_label.setText("Invalid email or password.")
-                    else:
-                        self.overlay.hide()
-                        self.error_label.setText("Cloud Login Error.")
-                    self.error_label.setStyleSheet("color: #ff6b6b; font-size: 11pt;")
-                    conn.close()
-                    return
-                # If local login succeeded, we can proceed offline
-            except Exception as e:
-                if fallback_to_cloud:
-                    self.overlay.hide()
-                    self.error_label.setText("Network error while verifying cloud account.")
-                    self.error_label.setStyleSheet("color: #ff6b6b; font-size: 11pt;")
-                    conn.close()
-                    return
-                # If local login succeeded, we can proceed offline
+                self.error_label.setText("Invalid email or password.")
+                conn.close()
+                return
 
             user_id, user_email, pwd_hash, display_name, role, is_active = row
+
+            if not is_active:
+                self.error_label.setText("This account has been disabled. Contact admin.")
+                conn.close()
+                return
+
+            if not verify_password(pwd, pwd_hash):
+                self.error_label.setText("Invalid email or password.")
+                conn.close()
+                return
 
             # Login success - update last_login
             c.execute("UPDATE users SET last_login = ? WHERE id = ?", (datetime.datetime.now().isoformat(), user_id))
@@ -5807,6 +5519,7 @@ class LoginScreen(ModernLoginScreen):
                 'role': role,
                 'permissions': permissions
             }
+            
             # Save to history
             if email not in self.login_history:
                 self.login_history.insert(0, email)
@@ -6485,10 +6198,10 @@ class MainWindow(QMainWindow):
         self.email_thread = None
         self.sync_worker = None
         self.current_menu = "offline"
-        # self.last_backup_date = None
-        # self.backup_scheduler = QTimer(self)
-        # self.backup_scheduler.timeout.connect(self.check_for_scheduled_backup)
-        # self.backup_scheduler.start(60000)
+        self.last_backup_date = None
+        self.backup_scheduler = QTimer(self)
+        self.backup_scheduler.timeout.connect(self.check_for_scheduled_backup)
+        self.backup_scheduler.start(60000)
 
         # Create containers for the toggleable components
         self.dashboard_container = QWidget()
@@ -6500,7 +6213,7 @@ class MainWindow(QMainWindow):
         self.update_dashboard_metrics()
         
         # Create the floating notification button
-        self.floating_notify_btn = QPushButton("🔔", self)
+        self.floating_notify_btn = QPushButton("≡ƒöö", self)
         self.floating_notify_btn.setFixedSize(50, 50)
         self.floating_notify_btn.setStyleSheet("""
             QPushButton {
@@ -6517,7 +6230,7 @@ class MainWindow(QMainWindow):
         # Timer for the live clock
         
         # Advanced Tools Floating Buttons
-        self.floating_ai_btn = QPushButton("🔮", self)
+        self.floating_ai_btn = QPushButton("≡ƒö«", self)
         self.floating_ai_btn.setFixedSize(50, 50)
         self.floating_ai_btn.setStyleSheet("""            QPushButton { background: white; border: 2px solid #ccc; border-radius: 25px; font-size: 16pt; }
             QPushButton:hover, QPushButton:focus { background: #f0f0f0; border-color: #333; }
@@ -6525,7 +6238,7 @@ class MainWindow(QMainWindow):
         self.floating_ai_btn.clicked.connect(lambda: show_ai_forecast(self, self.conn))
         self.floating_ai_btn.setToolTip("AI Sales Forecast")
         
-        self.floating_expense_btn = QPushButton("⚡", self)
+        self.floating_expense_btn = QPushButton("ΓÜí", self)
         self.floating_expense_btn.setFixedSize(50, 50)
         self.floating_expense_btn.setStyleSheet("""            QPushButton { background: white; border: 2px solid #ccc; border-radius: 25px; font-size: 16pt; }
             QPushButton:hover, QPushButton:focus { background: #f0f0f0; border-color: #333; }
@@ -6533,7 +6246,7 @@ class MainWindow(QMainWindow):
         self.floating_expense_btn.clicked.connect(lambda: QuickExpenseDialog(self.conn, self).exec_())
         self.floating_expense_btn.setToolTip("Quick Expense Log")
         
-        self.floating_eod_btn = QPushButton("🌙", self)
+        self.floating_eod_btn = QPushButton("≡ƒîÖ", self)
         self.floating_eod_btn.setFixedSize(50, 50)
         self.floating_eod_btn.setStyleSheet("""            QPushButton { background: white; border: 2px solid #ccc; border-radius: 25px; font-size: 16pt; }
             QPushButton:hover, QPushButton:focus { background: #f0f0f0; border-color: #333; }
@@ -6541,7 +6254,7 @@ class MainWindow(QMainWindow):
         self.floating_eod_btn.clicked.connect(lambda: EndOfDayDialog(self.conn, self).exec_())
         self.floating_eod_btn.setToolTip("End of Day Summary")
         
-        self.floating_sync_btn = QPushButton("☁️", self)
+        self.floating_sync_btn = QPushButton("Γÿü∩╕Å", self)
         self.floating_sync_btn.setFixedSize(50, 50)
         self.floating_sync_btn.setStyleSheet("""            QPushButton { background: white; border: 2px solid #ccc; border-radius: 25px; font-size: 16pt; }
             QPushButton:hover, QPushButton:focus { background: #f0f0f0; border-color: #333; }
@@ -6575,9 +6288,10 @@ class MainWindow(QMainWindow):
             self.fs_signals.new_remote_bill.connect(self.on_new_remote_bill)
             self.fs_signals.new_remote_kot.connect(self.on_new_remote_kot)
             
-            from firestore_rest import firestore as db
-            self.polling_worker = PollingWorker(db, CONFIG.get('shop_id', 'default'), self.fs_signals)
-            self.polling_worker.start()
+            db = firestore.client()
+            self.orders_watch = db.collection('web_orders').where('status', 'in', ['pending', 'preparing']).on_snapshot(self.on_firestore_snapshot)
+            self.remote_bills_watch = db.collection('bills').where('source', '==', 'web_admin').on_snapshot(self.on_remote_bills_snapshot)
+            self.remote_kots_watch = db.collection('kots').where('source', '==', 'web_admin').on_snapshot(self.on_remote_kots_snapshot)
             print("Firestore Web Orders and Admin Listeners started.")
         except Exception as e:
             print(f"Failed to start Firestore listeners: {e}")
@@ -6687,7 +6401,7 @@ class MainWindow(QMainWindow):
             pass
             
         if hasattr(self, 'action_kots'):
-            self.action_kots.setText(f"📋 KOT Queue ({kot_count})")
+            self.action_kots.setText(f"≡ƒôï KOT Queue ({kot_count})")
             try:
                 kot_btn = self.toolbar.widgetForAction(self.action_kots)
                 if kot_btn:
@@ -6726,7 +6440,7 @@ class MainWindow(QMainWindow):
             pass
             
         if hasattr(self, 'action_kots'):
-            self.action_kots.setText(f"📋 KOT Queue ({kot_count})")
+            self.action_kots.setText(f"≡ƒôï KOT Queue ({kot_count})")
             try:
                 kot_btn = self.toolbar.widgetForAction(self.action_kots)
                 if kot_btn:
@@ -6739,7 +6453,7 @@ class MainWindow(QMainWindow):
 
     def _update_web_order_badge(self):
         count = len([o for o in self.pending_web_orders if o.get('status', 'pending') == 'pending'])
-        self.action_web_orders.setText(f"🍔 Web Orders ({count})")
+        self.action_web_orders.setText(f"≡ƒìö Web Orders ({count})")
         if hasattr(self, 'web_orders_dlg') and self.web_orders_dlg and self.web_orders_dlg.isVisible():
             if hasattr(self, 'refresh_web_orders_table'):
                 self.refresh_web_orders_table()
@@ -6818,7 +6532,7 @@ class MainWindow(QMainWindow):
         self.tab_pending = QWidget()
         tab_pending_layout = QVBoxLayout(self.tab_pending)
         
-        btn_refresh = QPushButton("🔄 Refresh Queue")
+        btn_refresh = QPushButton("≡ƒöä Refresh Queue")
         btn_refresh.setStyleSheet("padding: 5px; font-weight: bold;")
         
         lbl_pending = QLabel("Pending KOTs")
@@ -6828,7 +6542,7 @@ class MainWindow(QMainWindow):
         top_layout.addWidget(lbl_pending)
         top_layout.addStretch()
         
-        btn_new_kot = QPushButton("➕ New KOT (N)")
+        btn_new_kot = QPushButton("Γ₧ò New KOT (N)")
         btn_new_kot.setStyleSheet("background: #28a745; color: white; padding: 5px 10px; font-weight: bold;")
         def open_quick_kot():
             dlg = QuickKOTDialog(self.conn, self.kot_dlg)
@@ -6864,7 +6578,7 @@ class MainWindow(QMainWindow):
         history_top_layout.addWidget(self.lbl_hist_cancelled)
         history_top_layout.addStretch()
         
-        btn_refresh_history = QPushButton("🔄 Refresh History")
+        btn_refresh_history = QPushButton("≡ƒöä Refresh History")
         btn_refresh_history.setStyleSheet("padding: 5px; font-weight: bold;")
         history_top_layout.addWidget(btn_refresh_history)
         tab_history_layout.addLayout(history_top_layout)
@@ -7078,14 +6792,19 @@ class MainWindow(QMainWindow):
 
     def check_for_updates(self):
         try:
-            from firestore_rest import firestore as db
-            doc = db.get_document("app_config/updater")
+            import os
+            from google.cloud import firestore
+            key_path = os.path.join(os.path.expanduser('~'), "Documents", "TFC_POS", "serviceAccountKey.json")
+            if not os.path.exists(key_path):
+                key_path = "serviceAccountKey.json"
+            db = firestore.Client.from_service_account_json(key_path)
+            doc = db.collection("app_config").document("updater").get()
             
-            if not doc:
+            if not doc.exists:
                 QMessageBox.information(self, "Up to date", f"You are running version {APP_VERSION}. No updates found on server.")
                 return
                 
-            data = doc
+            data = doc.to_dict()
             latest_version = data.get("latest_version", APP_VERSION)
             download_url = data.get("download_url", "")
             
@@ -7207,7 +6926,7 @@ class MainWindow(QMainWindow):
                 target_table.insertRow(row)
                 target_table.setItem(row, 0, QTableWidgetItem(order.get('customer_name', 'Walk-in')))
                 target_table.setItem(row, 1, QTableWidgetItem(order.get('customer_phone', '')))
-                target_table.setItem(row, 2, QTableWidgetItem(f"₹{order.get('total_amount', 0):.2f}"))
+                target_table.setItem(row, 2, QTableWidgetItem(f"Γé╣{order.get('total_amount', 0):.2f}"))
                 
                 # Timer Item
                 time_item = QTableWidgetItem("")
@@ -7280,9 +6999,11 @@ class MainWindow(QMainWindow):
         def accept_order(order_id, order):
             if order_id:
                 try:
+                    import firebase_admin
+                    from firebase_admin import firestore
                     import datetime
-                    from firestore_rest import firestore as db
-                    db.collection(f'shops/{CONFIG["shop_id"]}/web_orders').document(order_id).update({
+                    db = firestore.client()
+                    db.collection('web_orders').document(order_id).update({
                         'status': 'preparing',
                         'accepted_at': datetime.datetime.now().isoformat()
                     })
@@ -7294,9 +7015,11 @@ class MainWindow(QMainWindow):
         def mark_ready(order_id, order):
             if order_id:
                 try:
+                    import firebase_admin
+                    from firebase_admin import firestore
                     import datetime
-                    from firestore_rest import firestore as db
-                    db.collection(f'shops/{CONFIG["shop_id"]}/web_orders').document(order_id).update({
+                    db = firestore.client()
+                    db.collection('web_orders').document(order_id).update({
                         'status': 'ready',
                         'ready_at': datetime.datetime.now().isoformat()
                     })
@@ -7316,9 +7039,11 @@ class MainWindow(QMainWindow):
         def reject_order(order_id):
             if order_id:
                 try:
+                    import firebase_admin
+                    from firebase_admin import firestore
                     import datetime
-                    from firestore_rest import firestore as db
-                    db.collection(f'shops/{CONFIG["shop_id"]}/web_orders').document(order_id).update({
+                    db = firestore.client()
+                    db.collection('web_orders').document(order_id).update({
                         'status': 'rejected',
                         'rejected_at': datetime.datetime.now().isoformat()
                     })
@@ -7394,7 +7119,7 @@ class MainWindow(QMainWindow):
         action_customer_insights.triggered.connect(self.open_customer_insights_dialog)
         action_errors = QAction("Errors", self)
         action_errors.triggered.connect(self.open_error_logs)
-        action_advanced = QAction("🚀 Advanced", self)
+        action_advanced = QAction("≡ƒÜÇ Advanced", self)
         # action_advanced.triggered.connect(self.open_advanced_dialog)
         action_global_settings = QAction("Settings", self)
         action_global_settings.triggered.connect(self.open_global_settings_dialog)
@@ -7403,18 +7128,18 @@ class MainWindow(QMainWindow):
         
         action_user_manual = QAction("User Manual", self)
         action_user_manual.triggered.connect(self.open_user_manual)
-        action_procurement = QAction("🧾 Procure", self)
+        action_procurement = QAction("≡ƒº╛ Procure", self)
         action_procurement.triggered.connect(self.open_procurement_dialog)
         
         # QR Code Action
-        action_qr = QAction("📱 Show QR Menu", self)
+        action_qr = QAction("≡ƒô▒ Show QR Menu", self)
         action_qr.triggered.connect(self.show_qr_menu)
         
         # Pending Web Orders Bell Action (always available, permission check for opening dialog)
-        self.action_web_orders = QAction("🔔 Web Orders (0)", self)
+        self.action_web_orders = QAction("≡ƒöö Web Orders (0)", self)
         self.action_web_orders.triggered.connect(self.open_pending_web_orders)
         
-        self.action_kots = QAction("🧾 KOT Queue", self) if 'kot' in self.current_user.get('permissions', []) else None
+        self.action_kots = QAction("≡ƒº╛ KOT Queue", self) if 'kot' in self.current_user.get('permissions', []) else None
         if self.action_kots: self.action_kots.triggered.connect(self.open_kot_dashboard)
 
         # TOOLBAR
@@ -7423,7 +7148,7 @@ class MainWindow(QMainWindow):
         
         # Dashboard Dropdown
         self.dashboard_btn = QToolButton()
-        self.dashboard_btn.setText("📊 Dashboard")
+        self.dashboard_btn.setText("≡ƒôè Dashboard")
         self.dashboard_btn.setStyleSheet("""
             QToolButton { 
                 background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; 
@@ -7436,7 +7161,7 @@ class MainWindow(QMainWindow):
         
         # Business Dropdown
         self.business_btn = QToolButton()
-        self.business_btn.setText("💼 Business")
+        self.business_btn.setText("≡ƒÆ╝ Business")
         self.business_btn.setPopupMode(QToolButton.InstantPopup)
         self.business_btn.setStyleSheet("""
             QToolButton { 
@@ -7477,7 +7202,7 @@ class MainWindow(QMainWindow):
 
         # More Dropdown
         self.more_btn = QToolButton()
-        self.more_btn.setText("⚙️ More")
+        self.more_btn.setText("ΓÜÖ∩╕Å More")
         self.more_btn.setPopupMode(QToolButton.InstantPopup)
         self.more_btn.setStyleSheet("""
             QToolButton { 
@@ -7500,7 +7225,7 @@ class MainWindow(QMainWindow):
         more_menu.addAction(action_user_manual)
         
         # Updater
-        action_check_update = QAction("🔄 Check for Updates", self)
+        action_check_update = QAction("≡ƒöä Check for Updates", self)
         action_check_update.triggered.connect(self.check_for_updates)
         more_menu.addAction(action_check_update)
         if 'settings' in self.current_user.get('permissions', []): 
@@ -7596,7 +7321,7 @@ class MainWindow(QMainWindow):
         inventory_header_layout.addStretch()
         
         self.product_search_bar = QLineEdit()
-        self.product_search_bar.setPlaceholderText("🔍 Search Products...")
+        self.product_search_bar.setPlaceholderText("≡ƒöì Search Products...")
         self.product_search_bar.textChanged.connect(self.apply_client_filter)
         self.product_search_bar.setStyleSheet("""
             QLineEdit {
@@ -7782,16 +7507,16 @@ class MainWindow(QMainWindow):
         self.payment_mode = QComboBox()
         self.payment_mode.addItems(["Cash", "Card", "UPI", "Wallet"])
         self.discount = QLineEdit()
-        self.discount.setPlaceholderText("Discount (₹ or %)")
+        self.discount.setPlaceholderText("Discount (Γé╣ or %)")
         self.discount.textChanged.connect(self.update_bill_preview)
         self.discount.textChanged.connect(lambda: self.check_billing_timer_state())
         self.tax_check = QCheckBox("Enable Tax")
         self.tax_check.stateChanged.connect(self.toggle_tax)
         self.tendered_amount = QLineEdit()
-        self.tendered_amount.setPlaceholderText("Amount Given (₹)")
+        self.tendered_amount.setPlaceholderText("Amount Given (Γé╣)")
         self.tendered_amount.textChanged.connect(self.calculate_change)
         self.tendered_amount.textChanged.connect(lambda: self.check_billing_timer_state())
-        self.change_due_label = QLabel("Change Due: ₹0.00")
+        self.change_due_label = QLabel("Change Due: Γé╣0.00")
         self.change_due_label.setStyleSheet("color: #28a745; font-weight: bold; font-size: 11pt;")
         
         pay_layout.addWidget(QLabel("Mode:"), 0, 0)
@@ -7886,16 +7611,16 @@ class MainWindow(QMainWindow):
         header.setStyleSheet("font-size: 14pt; font-weight: bold; color: #444; margin-bottom: 10px;")
         layout.addWidget(header, 0, 0, 1, 5)
 
-        self.kpi_sales = KPICard("Today's Sales", "₹0.00", "💰", "#28a745")
-        self.kpi_refunds = KPICard("Refunds Today", "₹0.00", "🔄", "#dc3545")
-        self.kpi_orders = KPICard("Orders Today", "0", "🧾", "#007bff")
-        self.kpi_avg_bill = KPICard("Avg Bill Value", "₹0.00", "📊", "#6610f2")
-        self.kpi_health = KPICard("Business Health", "100/100", "🏥", "#20c997")
-        self.kpi_customers = KPICard("Total Customers", "0", "👥", "#e83e8c")
-        self.kpi_pending = KPICard("Pending Orders", "0", "⏳", "#fd7e14")
-        self.kpi_profit = KPICard("Monthly Profit", "₹0.00", "📈", "#28a745")
-        self.kpi_inventory = KPICard("Low Stock", "0", "⚠️", "#d63384")
-        self.kpi_top_seller = KPICard("Top Seller", "N/A", "🏆", "#ffc107")
+        self.kpi_sales = KPICard("Today's Sales", "Γé╣0.00", "≡ƒÆ░", "#28a745")
+        self.kpi_refunds = KPICard("Refunds Today", "Γé╣0.00", "≡ƒöä", "#dc3545")
+        self.kpi_orders = KPICard("Orders Today", "0", "≡ƒº╛", "#007bff")
+        self.kpi_avg_bill = KPICard("Avg Bill Value", "Γé╣0.00", "≡ƒôè", "#6610f2")
+        self.kpi_health = KPICard("Business Health", "100/100", "≡ƒÅÑ", "#20c997")
+        self.kpi_customers = KPICard("Total Customers", "0", "≡ƒæÑ", "#e83e8c")
+        self.kpi_pending = KPICard("Pending Orders", "0", "ΓÅ│", "#fd7e14")
+        self.kpi_profit = KPICard("Monthly Profit", "Γé╣0.00", "≡ƒôê", "#28a745")
+        self.kpi_inventory = KPICard("Low Stock", "0", "ΓÜá∩╕Å", "#d63384")
+        self.kpi_top_seller = KPICard("Top Seller", "N/A", "≡ƒÅå", "#ffc107")
 
         kpis = [
             self.kpi_sales, self.kpi_refunds, self.kpi_orders, self.kpi_avg_bill, self.kpi_health,
@@ -7956,7 +7681,7 @@ class MainWindow(QMainWindow):
             self.act_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
             self.act_table.setStyleSheet("font-size: 9pt;")
             act_layout.addWidget(self.act_table)
-            self.insight_tabs.addTab(activity_tab, "🔔 Live Activity")
+            self.insight_tabs.addTab(activity_tab, "≡ƒöö Live Activity")
             
             # --- CONSUMPTION TAB ---
             consumption_tab = QWidget()
@@ -7973,7 +7698,7 @@ class MainWindow(QMainWindow):
             self.con_table.setHorizontalHeaderLabels(["Material/Item", "Category", "Qty Consumed"])
             self.con_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
             con_layout.addWidget(self.con_table)
-            self.insight_tabs.addTab(consumption_tab, "📦 Today's Consumption")
+            self.insight_tabs.addTab(consumption_tab, "≡ƒôª Today's Consumption")
             
             layout.addWidget(self.insight_tabs)
             
@@ -8120,15 +7845,15 @@ class MainWindow(QMainWindow):
         try:
             tendered_str = self.tendered_amount.text().strip()
             if not tendered_str:
-                self.change_due_label.setText("Change Due: ₹0.00")
+                self.change_due_label.setText("Change Due: Γé╣0.00")
                 return
             tendered = float(tendered_str)
             change = tendered - self.current_bill_total
             if change >= 0:
-                self.change_due_label.setText(f"Change Due: ₹{(change or 0.0):.2f}")
+                self.change_due_label.setText(f"Change Due: Γé╣{(change or 0.0):.2f}")
                 self.change_due_label.setStyleSheet("color: #28a745; font-weight: bold; font-size: 11pt;")
             else:
-                self.change_due_label.setText(f"Short: ₹{abs(change):.2f}")
+                self.change_due_label.setText(f"Short: Γé╣{abs(change):.2f}")
                 self.change_due_label.setStyleSheet("color: #e30613; font-weight: bold; font-size: 11pt;")
         except ValueError:
             self.change_due_label.setText("Invalid Tendered Amount")
@@ -8141,7 +7866,7 @@ class MainWindow(QMainWindow):
         for r in range(self.order_table.rowCount()):
             name = self.order_table.item(r, 0).text()
             qty = int(self.order_table.item(r, 1).text())
-            price = float(self.order_table.item(r, 2).text().replace("₹", ""))
+            price = float(self.order_table.item(r, 2).text().replace("Γé╣", ""))
             items.append({"name": name, "qty": qty, "price": price})
         
         self.held_order_data = {
@@ -8354,7 +8079,7 @@ class MainWindow(QMainWindow):
             rows = c.fetchall()
             
             if not rows:
-                self.customer_profile_card.update_card("✨", "#e3f2fd", "#0d6efd", "NEW CUSTOMER", "#0d6efd", "No previous order history found.")
+                self.customer_profile_card.update_card("Γ£¿", "#e3f2fd", "#0d6efd", "NEW CUSTOMER", "#0d6efd", "No previous order history found.")
                 return
 
             name = rows[0][0] or "Unknown"
@@ -8374,8 +8099,8 @@ class MainWindow(QMainWindow):
                 fav_item = max(item_counts, key=item_counts.get)
                 if len(fav_item) > 18: fav_item = fav_item[:15] + "..."
 
-            stats = f"Orders: <b>{total_orders}</b> | Spend: <b>₹{total_spend:,.2f}</b><br>Last Visit: {last_order}<br>Favourite: {fav_item}"
-            avatar, bg, fg = ("👑", "#fff3cd", "#ffc107") if total_orders >= 5 else ("👤", "#e2e3e5", "#495057")
+            stats = f"Orders: <b>{total_orders}</b> | Spend: <b>Γé╣{total_spend:,.2f}</b><br>Last Visit: {last_order}<br>Favourite: {fav_item}"
+            avatar, bg, fg = ("≡ƒææ", "#fff3cd", "#ffc107") if total_orders >= 5 else ("≡ƒæñ", "#e2e3e5", "#495057")
             self.customer_profile_card.update_card(avatar, bg, fg, name, "#343a40", stats)
 
             if not self.customer_name.text().strip() and name != "Guest":
@@ -8435,10 +8160,10 @@ class MainWindow(QMainWindow):
                 self._recalc_row_total(row)
                 self.update_bill_preview()
         elif col == 2: # Price
-            curr_price = float(self.order_table.item(row, 2).text().replace("₹", ""))
+            curr_price = float(self.order_table.item(row, 2).text().replace("Γé╣", ""))
             new_price, ok = QInputDialog.getDouble(self, "Edit Price", f"Override price for {item_name}:", curr_price, 0.0, 99999.0, 2)
             if ok:
-                self.order_table.setItem(row, 2, QTableWidgetItem(f"₹{(new_price or 0.0):.2f}"))
+                self.order_table.setItem(row, 2, QTableWidgetItem(f"Γé╣{(new_price or 0.0):.2f}"))
                 self._recalc_row_total(row)
                 self.update_bill_preview()
 
@@ -8485,7 +8210,7 @@ class MainWindow(QMainWindow):
             self.product_list.setItem(row_pos, 0, name_item)
 
             # Price
-            price_item = QTableWidgetItem(f"₹{(row[3] or 0.0):.2f}")
+            price_item = QTableWidgetItem(f"Γé╣{(row[3] or 0.0):.2f}")
             price_item.setTextAlignment(Qt.AlignCenter)
             self.product_list.setItem(row_pos, 1, price_item)
 
@@ -8623,8 +8348,8 @@ class MainWindow(QMainWindow):
             self.order_table.insertRow(r)
             self.order_table.setItem(r, 0, QTableWidgetItem(name))
             self.order_table.setItem(r, 1, QTableWidgetItem(str(qty)))
-            self.order_table.setItem(r, 2, QTableWidgetItem(f"₹{(price or 0.0):.2f}"))
-            self.order_table.setItem(r, 3, QTableWidgetItem(f"₹{qty * price:.2f}"))
+            self.order_table.setItem(r, 2, QTableWidgetItem(f"Γé╣{(price or 0.0):.2f}"))
+            self.order_table.setItem(r, 3, QTableWidgetItem(f"Γé╣{qty * price:.2f}"))
             
             # Create a container widget for action buttons
             action_widget = QWidget()
@@ -8691,9 +8416,9 @@ class MainWindow(QMainWindow):
     def _recalc_row_total(self, r):
         try:
             qty = int(self.order_table.item(r, 1).text())
-            price = float(self.order_table.item(r, 2).text().replace("₹", ""))
+            price = float(self.order_table.item(r, 2).text().replace("Γé╣", ""))
             total = qty * price
-            self.order_table.setItem(r, 3, QTableWidgetItem(f"₹{(total or 0.0):.2f}"))
+            self.order_table.setItem(r, 3, QTableWidgetItem(f"Γé╣{(total or 0.0):.2f}"))
         except Exception as e:
             log_exception(e)
 
@@ -8709,7 +8434,7 @@ class MainWindow(QMainWindow):
             for r in range(self.order_table.rowCount()):
                 name = self.order_table.item(r, 0).text()
                 qty = int(self.order_table.item(r, 1).text())
-                price = float(self.order_table.item(r, 2).text().replace("₹", ""))
+                price = float(self.order_table.item(r, 2).text().replace("Γé╣", ""))
                 total = qty * price
                 subtotal += total
                 items.append({"name": name, "qty": qty, "price": price, "total": total})
@@ -8831,10 +8556,10 @@ class MainWindow(QMainWindow):
                 if total == 0:
                     total = qty * price
                     
-                self.order_table.setItem(r, 2, QTableWidgetItem(f"₹{price:.2f}"))
-                self.order_table.setItem(r, 3, QTableWidgetItem(f"₹{total:.2f}"))
+                self.order_table.setItem(r, 2, QTableWidgetItem(f"Γé╣{price:.2f}"))
+                self.order_table.setItem(r, 3, QTableWidgetItem(f"Γé╣{total:.2f}"))
                 
-                btn_remove = QPushButton("❌")
+                btn_remove = QPushButton("Γ¥î")
                 btn_remove.setStyleSheet("background: transparent; border: none; color: red;")
                 btn_remove.clicked.connect(lambda _, row_idx=r: self.remove_order_item(row_idx))
                 self.order_table.setCellWidget(r, 4, btn_remove)
@@ -8863,8 +8588,8 @@ class MainWindow(QMainWindow):
                 item_name = self.order_table.item(row, 0).text()
                 product_id = self.order_table.item(row, 0).data(Qt.UserRole)
                 qty = int(self.order_table.item(row, 1).text())
-                price = float(self.order_table.item(row, 2).text().replace("₹", ""))
-                total = float(self.order_table.item(row, 3).text().replace("₹", ""))
+                price = float(self.order_table.item(row, 2).text().replace("Γé╣", ""))
+                total = float(self.order_table.item(row, 3).text().replace("Γé╣", ""))
                 items.append({
                     "product_id": product_id,
                     "name": item_name,
@@ -8919,7 +8644,7 @@ class MainWindow(QMainWindow):
             for r in range(self.order_table.rowCount()):
                 name = self.order_table.item(r, 0).text()
                 qty = int(self.order_table.item(r, 1).text())
-                price = float(self.order_table.item(r, 2).text().replace("₹", ""))
+                price = float(self.order_table.item(r, 2).text().replace("Γé╣", ""))
                 total = qty * price
                 subtotal += total
                 items.append({"name": name, "qty": qty, "price": price, "total": total})
@@ -9046,7 +8771,7 @@ class MainWindow(QMainWindow):
                 if len(phone) == 10:
                     phone = "91" + phone
                 
-                msg = f"Hello {bill_data['customer_name']},\nThank you for visiting {CONFIG.get('app_name', 'TFC')}! Your bill total is ₹{(bill_data['total'] or 0.0):.2f}.\n\n*Please press Ctrl+V to paste your Bill PDF here!*"
+                msg = f"Hello {bill_data['customer_name']},\nThank you for visiting {CONFIG.get('app_name', 'TFC')}! Your bill total is Γé╣{(bill_data['total'] or 0.0):.2f}.\n\n*Please press Ctrl+V to paste your Bill PDF here!*"
                 wa_url = f"whatsapp://send?phone={phone}&text={urllib.parse.quote(msg)}"
                 webbrowser.open(wa_url)
                 self.show_notification("WhatsApp opened! Press Ctrl+V to paste the bill.")
@@ -9110,7 +8835,7 @@ class MainWindow(QMainWindow):
             self.product_list.setItem(row_pos, 0, name_item)
 
             # Price
-            price_item = QTableWidgetItem(f"₹{(row[3] or 0.0):.2f}")
+            price_item = QTableWidgetItem(f"Γé╣{(row[3] or 0.0):.2f}")
             price_item.setTextAlignment(Qt.AlignCenter)
             self.product_list.setItem(row_pos, 1, price_item)
 
@@ -9215,10 +8940,10 @@ class MainWindow(QMainWindow):
             admin_email = config.get('admin_email')
 
             if send_copy and admin_email:
-                subject = f"New Sale: Bill #{bill_no} - ₹{(bill_data['total'] or 0.0):.2f}"
+                subject = f"New Sale: Bill #{bill_no} - Γé╣{(bill_data['total'] or 0.0):.2f}"
                 body = f"A new bill has been generated.\n\n" \
                        f"Bill No: {bill_no}\n" \
-                       f"Total Amount: ₹{(bill_data['total'] or 0.0):.2f}\n" \
+                       f"Total Amount: Γé╣{(bill_data['total'] or 0.0):.2f}\n" \
                        f"Customer: {bill_data['customer_name']}\n\n" \
                        f"The full bill is attached."
                 self.send_email_async(admin_email, subject, body, pdf_path)
@@ -9311,13 +9036,13 @@ class MainWindow(QMainWindow):
             
                 today_sales = gross_sales - today_refunds
             
-                self.kpi_sales.set_value(f"₹{today_sales:,.2f}")
-                self.kpi_refunds.set_value(f"₹{today_refunds:,.2f}")
+                self.kpi_sales.set_value(f"Γé╣{today_sales:,.2f}")
+                self.kpi_refunds.set_value(f"Γé╣{today_refunds:,.2f}")
                 self.kpi_orders.set_value(str(orders_today))
             
                 # 3. Avg Bill Value
                 avg_bill = (gross_sales / orders_today) if orders_today > 0 else 0.0
-                self.kpi_avg_bill.set_value(f"₹{avg_bill:,.2f}")
+                self.kpi_avg_bill.set_value(f"Γé╣{avg_bill:,.2f}")
             
                 # 4. Total Customers
                 c.execute("SELECT COUNT(DISTINCT phone) FROM bills WHERE phone != 'N/A' AND phone != ''")
@@ -9340,7 +9065,7 @@ class MainWindow(QMainWindow):
                 monthly_expenses = c.fetchone()[0] or 0.0
             
                 net_profit = monthly_sales - monthly_refunds - monthly_expenses
-                self.kpi_profit.set_value(f"₹{net_profit:,.2f}")
+                self.kpi_profit.set_value(f"Γé╣{net_profit:,.2f}")
             
                 # 7. Inventory Alerts
                 c.execute("SELECT COUNT(id) FROM products WHERE qty <= 5 AND is_combo IS NULL")
@@ -9421,7 +9146,7 @@ class MainWindow(QMainWindow):
                         
                     self.act_table.setItem(row_idx, 0, QTableWidgetItem(f"#{b_no}"))
                     self.act_table.setItem(row_idx, 1, QTableWidgetItem(cust or "Guest"))
-                    self.act_table.setItem(row_idx, 2, QTableWidgetItem(f"₹{(tot or 0.0):.2f}"))
+                    self.act_table.setItem(row_idx, 2, QTableWidgetItem(f"Γé╣{(tot or 0.0):.2f}"))
                     self.act_table.setItem(row_idx, 3, QTableWidgetItem(time_str))
                 
                 # Update Consumption Table
@@ -9616,62 +9341,6 @@ class MainWindow(QMainWindow):
             log_exception(e)
         event.accept()
 
-
-class PollingWorker(QThread):
-    def __init__(self, db, shop_id, signals):
-        super().__init__()
-        self.db = db
-        self.shop_id = shop_id
-        self.signals = signals
-        self.running = True
-        self.known_orders = {}
-        self.known_bills = set()
-        self.known_kots = set()
-        
-    def run(self):
-        import time
-        while self.running:
-            try:
-                # Poll orders
-                orders = self.db.run_query(f"shops/{self.shop_id}/web_orders", 'status', 'IN', ['pending', 'preparing'])
-                current_order_ids = set()
-                for o in orders:
-                    oid = o['id']
-                    current_order_ids.add(oid)
-                    if oid not in self.known_orders:
-                        self.known_orders[oid] = o
-                        self.signals.new_order.emit(o)
-                    elif self.known_orders[oid] != o:
-                        self.known_orders[oid] = o
-                        self.signals.update_order.emit(o)
-                        
-                # Check for removed orders
-                for oid in list(self.known_orders.keys()):
-                    if oid not in current_order_ids:
-                        del self.known_orders[oid]
-                        self.signals.remove_order.emit(oid)
-
-                # Poll bills
-                bills = self.db.run_query(f"shops/{self.shop_id}/bills", 'source', 'EQUAL', 'web_admin')
-                for b in bills:
-                    bid = b['id']
-                    if bid not in self.known_bills:
-                        self.known_bills.add(bid)
-                        self.signals.new_remote_bill.emit(b)
-
-                # Poll kots
-                kots = self.db.run_query(f"shops/{self.shop_id}/kots", 'source', 'EQUAL', 'web_admin')
-                for k in kots:
-                    kid = k['id']
-                    if kid not in self.known_kots:
-                        self.known_kots.add(kid)
-                        self.signals.new_remote_kot.emit(k)
-                        
-            except Exception as e:
-                print("Polling error:", e)
-                
-            time.sleep(10)
-
 class SyncWorker(QThread):
     """Worker thread for syncing data to Firestore to avoid freezing the UI."""
     status_update = pyqtSignal(str)
@@ -9681,9 +9350,22 @@ class SyncWorker(QThread):
         try:
             self.status_update.emit("Initializing...")
             
-            # 1. Firebase is now initialized via REST API in firestore_rest
+            # 1. Find and Initialize Firebase
+            key_path = os.path.join(BASE_DIR, "serviceAccountKey.json")
+            # Fallback: check the script's directory as well
+            if not os.path.exists(key_path):
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                key_path = os.path.join(script_dir, "serviceAccountKey.json")
             
-            from firestore_rest import firestore as db
+            if not os.path.exists(key_path):
+                raise FileNotFoundError("`serviceAccountKey.json` not found in the application directory.")
+            
+            # Check if the app is already initialized before trying again
+            if not firebase_admin._apps:
+                cred = credentials.Certificate(key_path)
+                firebase_admin.initialize_app(cred)
+            
+            db = firestore.client()
             local_conn = get_conn()
             
             # Use real connection for pandas to avoid warnings
@@ -9695,7 +9377,7 @@ class SyncWorker(QThread):
             products = products.replace({float('nan'): None})
             prod_batch = db.batch()
             for index, row in products.iterrows():
-                doc_ref = db.collection(f'shops/{CONFIG["shop_id"]}/products').document(str(row['id']))
+                doc_ref = db.collection('products').document(str(row['id']))
                 prod_batch.set(doc_ref, row.to_dict())
             prod_batch.commit()
 
@@ -9712,7 +9394,7 @@ class SyncWorker(QThread):
                     except Exception as e:
                         with open('json_debug.log', 'a') as debug_f: debug_f.write(f"sync bills error: {e}, items={repr(bill_dict.get('items', '[]'))}\n")
                         raise e
-                    doc_ref = db.collection(f'shops/{CONFIG["shop_id"]}/bills').document(row['bill_no'])
+                    doc_ref = db.collection('bills').document(row['bill_no'])
                     bill_batch.set(doc_ref, bill_dict)
                 bill_batch.commit()
             except Exception as e:
@@ -9725,7 +9407,7 @@ class SyncWorker(QThread):
                 expenses = expenses.replace({float('nan'): None})
                 exp_batch = db.batch()
                 for index, row in expenses.iterrows():
-                    doc_ref = db.collection(f'shops/{CONFIG["shop_id"]}/expenses').document(str(row['id']))
+                    doc_ref = db.collection('expenses').document(str(row['id']))
                     exp_batch.set(doc_ref, row.to_dict())
                 exp_batch.commit()
             except Exception as e:
@@ -9738,7 +9420,7 @@ class SyncWorker(QThread):
                 refunds = refunds.replace({float('nan'): None})
                 ref_batch = db.batch()
                 for index, row in refunds.iterrows():
-                    doc_ref = db.collection(f'shops/{CONFIG["shop_id"]}/refunds').document(str(row['bill_no']))
+                    doc_ref = db.collection('refunds').document(str(row['bill_no']))
                     ref_batch.set(doc_ref, row.to_dict())
                 ref_batch.commit()
             except Exception as e:
@@ -9751,7 +9433,7 @@ class SyncWorker(QThread):
                 quotes = quotes.replace({float('nan'): None})
                 quo_batch = db.batch()
                 for index, row in quotes.iterrows():
-                    doc_ref = db.collection(f'shops/{CONFIG["shop_id"]}/quotes').document(str(row['id']))
+                    doc_ref = db.collection('quotes').document(str(row['id']))
                     quo_batch.set(doc_ref, row.to_dict())
                 quo_batch.commit()
             except Exception as e:
@@ -9764,7 +9446,7 @@ class SyncWorker(QThread):
                 offers = offers.replace({float('nan'): None})
                 off_batch = db.batch()
                 for index, row in offers.iterrows():
-                    doc_ref = db.collection(f'shops/{CONFIG["shop_id"]}/offers').document(str(row['id']))
+                    doc_ref = db.collection('offers').document(str(row['id']))
                     off_batch.set(doc_ref, row.to_dict())
                 off_batch.commit()
             except Exception as e:
@@ -9777,7 +9459,7 @@ class SyncWorker(QThread):
                 vendors = vendors.replace({float('nan'): None})
                 ven_batch = db.batch()
                 for index, row in vendors.iterrows():
-                    doc_ref = db.collection(f'shops/{CONFIG["shop_id"]}/vendors').document(str(row['id']))
+                    doc_ref = db.collection('vendors').document(str(row['id']))
                     ven_batch.set(doc_ref, row.to_dict())
                 ven_batch.commit()
             except Exception as e:
@@ -9790,7 +9472,7 @@ class SyncWorker(QThread):
                 po = po.replace({float('nan'): None})
                 po_batch = db.batch()
                 for index, row in po.iterrows():
-                    doc_ref = db.collection(f'shops/{CONFIG["shop_id"]}/purchase_orders').document(str(row['id']))
+                    doc_ref = db.collection('purchase_orders').document(str(row['id']))
                     po_batch.set(doc_ref, row.to_dict())
                 po_batch.commit()
             except Exception as e:
@@ -9803,7 +9485,7 @@ class SyncWorker(QThread):
                 poi = poi.replace({float('nan'): None})
                 poi_batch = db.batch()
                 for index, row in poi.iterrows():
-                    doc_ref = db.collection(f'shops/{CONFIG["shop_id"]}/purchase_order_items').document(str(row['id']))
+                    doc_ref = db.collection('purchase_order_items').document(str(row['id']))
                     poi_batch.set(doc_ref, row.to_dict())
                 poi_batch.commit()
             except Exception as e:
@@ -9816,7 +9498,7 @@ class SyncWorker(QThread):
                 meta = meta.replace({float('nan'): None})
                 meta_batch = db.batch()
                 for index, row in meta.iterrows():
-                    doc_ref = db.collection(f'shops/{CONFIG["shop_id"]}/metadata').document(str(row['key']))
+                    doc_ref = db.collection('metadata').document(str(row['key']))
                     meta_batch.set(doc_ref, row.to_dict())
                 meta_batch.commit()
             except Exception as e:
@@ -10286,30 +9968,31 @@ if __name__ == "__main__":
         app.setQuitOnLastWindowClosed(True)
         global window
         
-        show_setup = not has_users()
-        
-        while True:
-            if show_setup:
-                setup = FirstTimeSetupScreen()
-                if setup.exec_() == QDialog.Accepted and setup.setup_created:
-                    show_setup = False
+        # Check if any users exist
+        if not has_users():
+            # First-time setup
+            setup = FirstTimeSetupScreen()
+            if setup.exec_() == QDialog.Accepted and setup.setup_created:
+                login = LoginScreen()
+                if login.exec_() == QDialog.Accepted and login.logged_in_user:
+                    window = MainWindow(login.logged_in_user)
+                    window.show()
+                    window.setup_user_status_bar()
+                    window.show_notification(f"Welcome, {login.logged_in_user['display_name']}! Super Admin account is active.")
                 else:
                     sys.exit(0)
             else:
-                login = LoginScreen()
-                if login.exec_() == QDialog.Accepted:
-                    if getattr(login, 'create_new_account', False):
-                        show_setup = True
-                    elif login.logged_in_user:
-                        window = MainWindow(login.logged_in_user)
-                        window.show()
-                        window.setup_user_status_bar()
-                        window.show_notification(f"Welcome, {login.logged_in_user['display_name']}!")
-                        break
-                    else:
-                        sys.exit(0)
-                else:
-                    sys.exit(0)
+                sys.exit(0)
+        else:
+            # Show login screen
+            login = LoginScreen()
+            if login.exec_() == QDialog.Accepted and login.logged_in_user:
+                window = MainWindow(login.logged_in_user)
+                window.show()
+                window.setup_user_status_bar()
+                window.show_notification(f"Welcome back, {login.logged_in_user['display_name']}!")
+            else:
+                sys.exit(0)
 
     # Allow splash screen to be visible for exactly 6 seconds
     QTimer.singleShot(6000, show_auth_flow)

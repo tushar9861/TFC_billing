@@ -1,6 +1,4 @@
 import sqlite3 as real_sqlite3
-import firebase_admin
-from firebase_admin import credentials, firestore
 import threading
 import json
 import os
@@ -10,15 +8,9 @@ print("LOADING FIRESTORE SQLITE BRIDGE...")
 
 # 1. Initialize Firebase
 try:
-    if not firebase_admin._apps:
-        key_path = 'serviceAccountKey.json'
-        if not os.path.exists(key_path):
-            key_path = os.path.join(os.path.dirname(__file__), 'serviceAccountKey.json')
-        cred = credentials.Certificate(key_path)
-        firebase_admin.initialize_app(cred)
-    db = firestore.client()
+    from firestore_rest import firestore as db
 except Exception as e:
-    print(f"FAILED TO INIT FIREBASE in Bridge: {e}")
+    print(f"FAILED TO INIT FIREBASE: {e}")
     db = None
 
 # We will use a local SQLite file as a cache.
@@ -104,7 +96,16 @@ class BridgeCursor:
                     except:
                         pass
                         
-                doc_ref = db.collection(table).document(doc_id)
+                
+                import json, os
+                shop_id = "UNKNOWN"
+                if os.path.exists("config.json"):
+                    try:
+                        with open("config.json", "r") as cfg:
+                            shop_id = json.load(cfg).get("shop_id", "UNKNOWN")
+                    except: pass
+                doc_ref = db.collection(f"shops/{shop_id}/{table}").document(doc_id)
+
                 batch.set(doc_ref, row_dict)
                 count += 1
                 
@@ -151,7 +152,16 @@ def _download_all_from_firestore(real_conn):
     
     for coll_name in collections:
         try:
-            docs = db.collection(coll_name).stream()
+            
+            import json, os
+            shop_id = "UNKNOWN"
+            if os.path.exists("config.json"):
+                try:
+                    with open("config.json", "r") as cfg:
+                        shop_id = json.load(cfg).get("shop_id", "UNKNOWN")
+                except: pass
+            docs = db.collection(f"shops/{shop_id}/{coll_name}").stream()
+
             for doc in docs:
                 data = doc.to_dict()
                 
