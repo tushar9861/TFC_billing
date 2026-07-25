@@ -24,7 +24,7 @@ import re as re_module
 import requests
 import subprocess
 
-APP_VERSION = "1.2.2"
+APP_VERSION = "1.2.3"
 import math
 import random
 import os
@@ -7486,8 +7486,8 @@ class MainWindow(QMainWindow):
             if reply == QMessageBox.Yes:
                 self.download_and_apply_update(download_url)
         except Exception as e:
-            from logger import log_exception
-            log_exception(e)
+            import traceback
+            traceback.print_exc()
             QMessageBox.critical(self, "Error", f"Failed to check for updates: {e}")
 
     def download_and_apply_update(self, url):
