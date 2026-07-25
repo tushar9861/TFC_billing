@@ -5280,7 +5280,7 @@ class FirstTimeSetupScreen(QDialog):
 
     def create_account(self):
         name = self.display_name.text().strip()
-        email = self.email.currentText().strip()
+        email = self.email.text().strip()
         pwd = self.password.text()
         confirm = self.confirm_password.text()
 
