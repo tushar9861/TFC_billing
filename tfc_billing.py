@@ -6857,7 +6857,7 @@ class MainWindow(QMainWindow):
         
         import sys
         import subprocess
-        
+
         # Windows silent invisible startup script (VBScript triggering BAT)
         bat_path = os.path.join(os.getcwd(), "apply_update.bat")
         vbs_path = os.path.join(os.getcwd(), "apply_update.vbs")
