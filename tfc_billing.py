@@ -6855,6 +6855,9 @@ class MainWindow(QMainWindow):
         self.update_dlg.lbl_status.setText("Finalizing installation...")
         self.update_dlg.progress_bar.setValue(100)
         
+        import sys
+        import subprocess
+        
         # Windows silent invisible startup script (VBScript triggering BAT)
         bat_path = os.path.join(os.getcwd(), "apply_update.bat")
         vbs_path = os.path.join(os.getcwd(), "apply_update.vbs")
@@ -6875,9 +6878,7 @@ class MainWindow(QMainWindow):
             f.write('Set objFSO = CreateObject("Scripting.FileSystemObject")\n')
             f.write('objFSO.DeleteFile WScript.ScriptFullName\n')
             
-        import subprocess
         subprocess.Popen(['wscript', vbs_path], creationflags=subprocess.CREATE_NO_WINDOW)
-        import sys
         sys.exit(0)
         
     def open_user_manual(self):
