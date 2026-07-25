@@ -704,21 +704,6 @@ class DistributorDashboard(QMainWindow):
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to publish: {e}")
 
-# ─────────────────────────────────────────────
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    app.setFont(QFont("Segoe UI", 12))
-
-    if db:
-        login_dlg = AdminLoginDialog()
-        if login_dlg.result() != QDialog.Accepted:
-            # Not auto-logged in, show dialog manually
-            if login_dlg.exec_() != QDialog.Accepted:
-                sys.exit(0)
-    
-    window = DistributorDashboard()
-    window.show()
-    sys.exit(app.exec_())
     def _build_sql_tab(self):
         w = QWidget()
         l = QVBoxLayout(w)
@@ -1188,3 +1173,18 @@ class AdminLoginDialog(QDialog):
 # ─────────────────────────────────────────────
 #  ENTRY POINT
 
+# ─────────────────────────────────────────────
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    app.setFont(QFont("Segoe UI", 12))
+
+    if db:
+        login_dlg = AdminLoginDialog()
+        if login_dlg.result() != QDialog.Accepted:
+            # Not auto-logged in, show dialog manually
+            if login_dlg.exec_() != QDialog.Accepted:
+                sys.exit(0)
+    
+    window = DistributorDashboard()
+    window.show()
+    sys.exit(app.exec_())
