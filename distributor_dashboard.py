@@ -633,6 +633,92 @@ class DistributorDashboard(QMainWindow):
         l.addWidget(self.shop_table)
         self.stack.addWidget(w)
 
+    def _build_updater_tab(self):
+        w = QWidget()
+        l = QVBoxLayout(w)
+        l.setContentsMargins(40, 40, 40, 40)
+        l.setSpacing(24)
+
+        header = QLabel("Publish App Update")
+        header.setStyleSheet("font-size: 24pt; font-weight: bold; color: #111827;")
+        l.addWidget(header)
+
+        desc = QLabel("Publish a new version of SmartPOS by pasting the exact URL to the compiled .exe file.\nAll clients will receive this update silently.")
+        desc.setStyleSheet("color: #6b7280; font-size: 11pt;")
+        desc.setWordWrap(True)
+        l.addWidget(desc)
+
+        form = QFormLayout()
+        form.setSpacing(20)
+        form.setVerticalSpacing(20)
+
+        self.upd_version_input = QLineEdit()
+        self.upd_version_input.setPlaceholderText("e.g. 1.2.5")
+        form.addRow("New Version:", self.upd_version_input)
+
+        self.upd_url_input = QLineEdit()
+        self.upd_url_input.setPlaceholderText("https://github.com/tushar9861/TFC_billing/releases/download/.../SmartPOS.exe")
+        form.addRow("Download URL:", self.upd_url_input)
+
+        l.addLayout(form)
+
+        btn = QPushButton("Publish Update")
+        btn.setStyleSheet("""
+            QPushButton {
+                background: #00D26A; color: white; font-weight: bold; font-size: 12pt;
+                padding: 12px 24px; border-radius: 8px; border: none;
+            }
+            QPushButton:hover { background: #00b35a; }
+        """)
+        btn.setFixedWidth(200)
+        btn.clicked.connect(self._publish_update)
+        
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        btn_layout.addWidget(btn)
+        btn_layout.addStretch()
+        l.addLayout(btn_layout)
+        l.addStretch()
+        self.stack.addWidget(w)
+        
+    def _publish_update(self):
+        v = self.upd_version_input.text().strip()
+        u = self.upd_url_input.text().strip()
+        if not v or not u:
+            QMessageBox.warning(self, "Error", "Both fields are required!")
+            return
+            
+        reply = QMessageBox.question(self, "Confirm Publish", f"Are you sure you want to push version {v} to all clients?", QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            try:
+                import firebase_admin
+                from firebase_admin import firestore
+                db = firestore.client()
+                db.collection("app_config").document("updater").set({
+                    "latest_version": v,
+                    "download_url": u
+                }, merge=True)
+                QMessageBox.information(self, "Success", "Update published successfully!")
+                self.upd_version_input.clear()
+                self.upd_url_input.clear()
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to publish: {e}")
+
+# ─────────────────────────────────────────────
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    app.setFont(QFont("Segoe UI", 12))
+
+    if db:
+        login_dlg = AdminLoginDialog()
+        if login_dlg.result() != QDialog.Accepted:
+            # Not auto-logged in, show dialog manually
+            if login_dlg.exec_() != QDialog.Accepted:
+                sys.exit(0)
+    
+    window = DistributorDashboard()
+    window.show()
+    sys.exit(app.exec_())
     def _build_sql_tab(self):
         w = QWidget()
         l = QVBoxLayout(w)
@@ -1101,89 +1187,4 @@ class AdminLoginDialog(QDialog):
 
 # ─────────────────────────────────────────────
 #  ENTRY POINT
-# ─────────────────────────────────────────────
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    app.setFont(QFont("Segoe UI", 12))
 
-    if db:
-        login_dlg = AdminLoginDialog()
-        if login_dlg.result() != QDialog.Accepted:
-            # Not auto-logged in, show dialog manually
-            if login_dlg.exec_() != QDialog.Accepted:
-                sys.exit(0)
-    
-    window = DistributorDashboard()
-    window.show()
-    sys.exit(app.exec_())
-
-    def _build_updater_tab(self):
-        w = QWidget()
-        l = QVBoxLayout(w)
-        l.setContentsMargins(40, 40, 40, 40)
-        l.setSpacing(24)
-
-        header = QLabel("Publish App Update")
-        header.setStyleSheet("font-size: 24pt; font-weight: bold; color: #111827;")
-        l.addWidget(header)
-
-        desc = QLabel("Publish a new version of SmartPOS by pasting the exact URL to the compiled .exe file.\nAll clients will receive this update silently.")
-        desc.setStyleSheet("color: #6b7280; font-size: 11pt;")
-        desc.setWordWrap(True)
-        l.addWidget(desc)
-
-        form = QFormLayout()
-        form.setSpacing(20)
-        form.setVerticalSpacing(20)
-
-        self.upd_version_input = QLineEdit()
-        self.upd_version_input.setPlaceholderText("e.g. 1.2.5")
-        form.addRow("New Version:", self.upd_version_input)
-
-        self.upd_url_input = QLineEdit()
-        self.upd_url_input.setPlaceholderText("https://github.com/tushar9861/TFC_billing/releases/download/.../SmartPOS.exe")
-        form.addRow("Download URL:", self.upd_url_input)
-
-        l.addLayout(form)
-
-        btn = QPushButton("Publish Update")
-        btn.setStyleSheet("""
-            QPushButton {
-                background: #00D26A; color: white; font-weight: bold; font-size: 12pt;
-                padding: 12px 24px; border-radius: 8px; border: none;
-            }
-            QPushButton:hover { background: #00b35a; }
-        """)
-        btn.setFixedWidth(200)
-        btn.clicked.connect(self._publish_update)
-        
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
-        btn_layout.addWidget(btn)
-        btn_layout.addStretch()
-        l.addLayout(btn_layout)
-        l.addStretch()
-        self.stack.addWidget(w)
-        
-    def _publish_update(self):
-        v = self.upd_version_input.text().strip()
-        u = self.upd_url_input.text().strip()
-        if not v or not u:
-            QMessageBox.warning(self, "Error", "Both fields are required!")
-            return
-            
-        reply = QMessageBox.question(self, "Confirm Publish", f"Are you sure you want to push version {v} to all clients?", QMessageBox.Yes | QMessageBox.No)
-        if reply == QMessageBox.Yes:
-            try:
-                import firebase_admin
-                from firebase_admin import firestore
-                db = firestore.client()
-                db.collection("app_config").document("updater").set({
-                    "latest_version": v,
-                    "download_url": u
-                }, merge=True)
-                QMessageBox.information(self, "Success", "Update published successfully!")
-                self.upd_version_input.clear()
-                self.upd_url_input.clear()
-            except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to publish: {e}")
