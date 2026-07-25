@@ -273,11 +273,11 @@ class ModernLoginScreen(QDialog):
         
         left_layout.addStretch()
         
-        title = QLabel("RestaurantOS")
+        title = QLabel("SmartPOS Billing")
         title.setStyleSheet("color: white; font-size: 42pt; font-weight: bold; font-family: 'Segoe UI';")
         left_layout.addWidget(title)
         
-        subtitle = QLabel("Fast.\\nReliable.\\nBuilt for Modern Restaurants.")
+        subtitle = QLabel("Empowering your business.\\nSeamless billing.\\nSmarter sales.")
         subtitle.setStyleSheet("color: #00D26A; font-size: 20pt; font-weight: bold;")
         left_layout.addWidget(subtitle)
         
@@ -316,13 +316,57 @@ class ModernLoginScreen(QDialog):
         card_layout.addWidget(card_title)
         
         # Dynamic Email Field Wrapper
-        self.email = FloatingInput("Login ID / Email")
-        card_layout.addWidget(self.email)
+        self.email_wrapper = QWidget()
+        ew_layout = QHBoxLayout(self.email_wrapper)
+        ew_layout.setContentsMargins(0,0,0,0)
+        ew_layout.setSpacing(10)
         
-        # History Layout
-        self.history_layout = QVBoxLayout()
-        self.history_layout.setSpacing(10)
-        card_layout.addLayout(self.history_layout)
+        self.email = FloatingInput("Login ID / Email")
+        ew_layout.addWidget(self.email, 1)
+        
+        self.history_btn = QPushButton("▼")
+        self.history_btn.setToolTip("Recent Accounts")
+        self.history_btn.setCursor(Qt.PointingHandCursor)
+        self.history_btn.setFixedSize(50, 75)
+        self.history_btn.setStyleSheet("""
+            QPushButton {
+                background: rgba(255, 255, 255, 0.05);
+                border: 2px solid rgba(255, 255, 255, 0.12);
+                border-radius: 12px;
+                color: white;
+                font-size: 14pt;
+                margin-top: 20px;
+            }
+            QPushButton:hover {
+                background: rgba(255, 255, 255, 0.1);
+                border: 2px solid #00D26A;
+            }
+            QPushButton::menu-indicator {
+                image: none;
+            }
+        """)
+        
+        self.history_menu = QMenu(self)
+        self.history_menu.setStyleSheet("""
+            QMenu {
+                background-color: #1a222d;
+                color: white;
+                border: 1px solid rgba(255,255,255,0.1);
+                border-radius: 8px;
+            }
+            QMenu::item {
+                padding: 10px 30px;
+                font-size: 12pt;
+            }
+            QMenu::item:selected {
+                background-color: #00D26A;
+                color: white;
+            }
+        """)
+        self.history_btn.setMenu(self.history_menu)
+        ew_layout.addWidget(self.history_btn)
+        
+        card_layout.addWidget(self.email_wrapper)
         
         self.password = FloatingInput("Password", is_password=True)
         self.password.input.returnPressed.connect(self.trigger_login)
@@ -6035,9 +6079,8 @@ class LoginScreen(ModernLoginScreen):
                 with open(self.history_file, 'r') as f:
                     self.login_history = json.load(f)
                     for em in self.login_history[:5]: # Max 5 accounts
-                        card = RecentAccountCard(em)
-                        card.clicked.connect(lambda checked, e=em: self.fill_email(e))
-                        self.history_layout.addWidget(card)
+                        action = self.history_menu.addAction(em)
+                        action.triggered.connect(lambda checked, e=em: self.fill_email(e))
             except Exception:
                 pass
                 
@@ -6058,10 +6101,7 @@ class LoginScreen(ModernLoginScreen):
         self.email.setText("")
         
         # Clear cards
-        while self.history_layout.count():
-            child = self.history_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
+        self.history_menu.clear()
                 
         try:
             with open(self.history_file, 'w') as f:
