@@ -38,3 +38,12 @@ def write_license_key(license_key, data):
         _admin_db.collection("license_keys").document(license_key).set(data)
         return True
     raise RuntimeError("Firebase Admin SDK not available (serviceAccountKey.json missing or firebase-admin not installed).")
+
+def write_updater_config(version, url):
+    if _init() and _admin_db:
+        _admin_db.collection("app_config").document("updater").set({
+            "latest_version": version,
+            "download_url": url
+        }, merge=True)
+        return True
+    raise RuntimeError("Firebase Admin SDK not available (serviceAccountKey.json missing or firebase-admin not installed).")

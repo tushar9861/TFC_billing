@@ -691,13 +691,8 @@ class DistributorDashboard(QMainWindow):
         reply = QMessageBox.question(self, "Confirm Publish", f"Are you sure you want to push version {v} to all clients?", QMessageBox.Yes | QMessageBox.No)
         if reply == QMessageBox.Yes:
             try:
-                import firebase_admin
-                from firebase_admin import firestore
-                db = firestore.client()
-                db.collection("app_config").document("updater").set({
-                    "latest_version": v,
-                    "download_url": u
-                }, merge=True)
+                from firebase_admin_write import write_updater_config
+                write_updater_config(v, u)
                 QMessageBox.information(self, "Success", "Update published successfully!")
                 self.upd_version_input.clear()
                 self.upd_url_input.clear()
