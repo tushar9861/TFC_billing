@@ -6862,28 +6862,18 @@ class MainWindow(QMainWindow):
         py_exe = sys.executable.replace("python.exe", "pythonw.exe")
         
         with open(bat_path, "w") as f:
-            f.write("@echo off
-")
-            f.write("timeout /t 2 /nobreak > NUL
-")
-            f.write('move /Y "tfc_billing.py" "tfc_billing.py.bak"
-')
-            f.write('move /Y "tfc_billing_update.py" "tfc_billing.py"
-')
-            f.write(f'start "" "{py_exe}" "tfc_billing.py"
-')
-            f.write('del "%~f0"
-')
+            f.write("@echo off\n")
+            f.write("timeout /t 2 /nobreak > NUL\n")
+            f.write('move /Y "tfc_billing.py" "tfc_billing.py.bak"\n')
+            f.write('move /Y "tfc_billing_update.py" "tfc_billing.py"\n')
+            f.write(f'start "" "{py_exe}" "tfc_billing.py"\n')
+            f.write('del "%~f0"\n')
             
         with open(vbs_path, "w") as f:
-            f.write('Set WshShell = CreateObject("WScript.Shell")
-')
-            f.write(f'WshShell.Run chr(34) & "{bat_path}" & Chr(34), 0
-')
-            f.write('Set objFSO = CreateObject("Scripting.FileSystemObject")
-')
-            f.write('objFSO.DeleteFile WScript.ScriptFullName
-')
+            f.write('Set WshShell = CreateObject("WScript.Shell")\n')
+            f.write(f'WshShell.Run chr(34) & "{bat_path}" & Chr(34), 0\n')
+            f.write('Set objFSO = CreateObject("Scripting.FileSystemObject")\n')
+            f.write('objFSO.DeleteFile WScript.ScriptFullName\n')
             
         import subprocess
         subprocess.Popen(['wscript', vbs_path], creationflags=subprocess.CREATE_NO_WINDOW)
