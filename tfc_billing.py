@@ -24,7 +24,7 @@ import re as re_module
 import requests
 import subprocess
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout,
@@ -3132,7 +3132,63 @@ class EmailWorker(QObject):
 # ================================
 # WORKER FOR THREADING
 # ================================
+class UpdateSplashDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.resize(500, 250)
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0,0,0,0)
+        
+        frame = QFrame()
+        frame.setStyleSheet("QFrame { background-color: white; border-radius: 12px; border: 2px solid #e30613; }")
+        
+        frame_layout = QVBoxLayout(frame)
+        frame_layout.setContentsMargins(30, 30, 30, 30)
+        
+        lbl_title = QLabel("TFC System Update")
+        lbl_title.setStyleSheet("font-size: 22px; font-weight: bold; color: #333; border: none;")
+        lbl_title.setAlignment(Qt.AlignCenter)
+        
+        self.lbl_status = QLabel("Initializing...")
+        self.lbl_status.setStyleSheet("font-size: 14px; color: #666; border: none;")
+        self.lbl_status.setAlignment(Qt.AlignCenter)
+        
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: none;
+                background-color: #f0f0f0;
+                border-radius: 6px;
+                height: 12px;
+                text-align: center;
+                color: transparent;
+            }
+            QProgressBar::chunk {
+                background-color: #e30613;
+                border-radius: 6px;
+            }
+        """)
+        self.progress_bar.setValue(0)
+        
+        frame_layout.addWidget(lbl_title)
+        frame_layout.addSpacing(20)
+        frame_layout.addWidget(self.progress_bar)
+        frame_layout.addSpacing(10)
+        frame_layout.addWidget(self.lbl_status)
+        
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(20)
+        shadow.setColor(QColor(0, 0, 0, 80))
+        shadow.setOffset(0, 5)
+        frame.setGraphicsEffect(shadow)
+        
+        layout.addWidget(frame)
+
 class UpdateWorker(QObject):
+    progress = pyqtSignal(int, str)
     finished = pyqtSignal(str)
     error = pyqtSignal(str)
     
@@ -3144,10 +3200,25 @@ class UpdateWorker(QObject):
     def run(self):
         try:
             import requests
-            response = requests.get(self.url, timeout=15)
+            self.progress.emit(10, "Connecting to update server...")
+            response = requests.get(self.url, stream=True, timeout=15)
             response.raise_for_status()
+            total_size = int(response.headers.get('content-length', 0))
+            
             with open(self.dest_path, "wb") as f:
-                f.write(response.content)
+                if total_size == 0:
+                    f.write(response.content)
+                    self.progress.emit(90, "Download complete...")
+                else:
+                    downloaded = 0
+                    for data in response.iter_content(chunk_size=4096):
+                        downloaded += len(data)
+                        f.write(data)
+                        done = int(10 + 80 * downloaded / total_size)
+                        self.progress.emit(done, f"Downloading assets... {int(downloaded/1024)}KB")
+                        
+            self.progress.emit(100, "Verifying integrity...")
+            import time; time.sleep(0.5)
             self.finished.emit(self.dest_path)
         except Exception as e:
             self.error.emit(str(e))
@@ -6721,9 +6792,12 @@ class MainWindow(QMainWindow):
 
     def check_for_updates(self):
         try:
-            # Query Firestore for app_config/updater
+            import os
             from google.cloud import firestore
-            db = firestore.Client.from_service_account_json(resource_path("serviceAccountKey.json"))
+            key_path = os.path.join(os.path.expanduser('~'), "Documents", "TFC_POS", "serviceAccountKey.json")
+            if not os.path.exists(key_path):
+                key_path = "serviceAccountKey.json"
+            db = firestore.Client.from_service_account_json(key_path)
             doc = db.collection("app_config").document("updater").get()
             
             if not doc.exists:
@@ -6743,26 +6817,20 @@ class MainWindow(QMainWindow):
                 return
                 
             reply = QMessageBox.question(
-                self, "Update Available!", 
-                f"Version {latest_version} is available! You are currently on {APP_VERSION}.\n\nDo you want to download and install it now?\n(Your data and backups will not be affected.)",
+                self, "System Update Available", 
+                f"Version {latest_version} is ready for installation.\\n\\nProceed with update?\\n(Your database will remain untouched.)",
                 QMessageBox.Yes | QMessageBox.No
             )
             
             if reply == QMessageBox.Yes:
                 self.download_and_apply_update(download_url)
         except Exception as e:
+            from logger import log_exception
             log_exception(e)
             QMessageBox.critical(self, "Error", f"Failed to check for updates: {e}")
 
     def download_and_apply_update(self, url):
-        self.update_dlg = QDialog(self)
-        self.update_dlg.setWindowTitle("Downloading Update...")
-        self.update_dlg.resize(400, 100)
-        layout = QVBoxLayout(self.update_dlg)
-        lbl = QLabel("Downloading latest version securely from Firebase...\nPlease wait, do not close the app.")
-        lbl.setAlignment(Qt.AlignCenter)
-        lbl.setFont(QFont("Segoe UI", 12, QFont.Bold))
-        layout.addWidget(lbl)
+        self.update_dlg = UpdateSplashDialog(self)
         self.update_dlg.show()
         
         self.update_thread = QThread()
@@ -6771,6 +6839,7 @@ class MainWindow(QMainWindow):
         self.update_worker.moveToThread(self.update_thread)
         
         self.update_thread.started.connect(self.update_worker.run)
+        self.update_worker.progress.connect(lambda v, s: (self.update_dlg.progress_bar.setValue(v), self.update_dlg.lbl_status.setText(s)))
         self.update_worker.finished.connect(self.on_update_downloaded)
         self.update_worker.error.connect(self.on_update_error)
         
@@ -6780,27 +6849,46 @@ class MainWindow(QMainWindow):
         self.update_thread.quit()
         self.update_thread.wait()
         self.update_dlg.close()
-        QMessageBox.critical(self, "Download Failed", f"Failed to download update: {err_msg}")
+        QMessageBox.critical(self, "Update Failed", f"Network error during update: {err_msg}")
         
     def on_update_downloaded(self, dest_path):
-        self.update_thread.quit()
-        self.update_thread.wait()
-        self.update_dlg.close()
+        self.update_dlg.lbl_status.setText("Finalizing installation...")
+        self.update_dlg.progress_bar.setValue(100)
         
-        QMessageBox.information(self, "Update Ready", "Download complete! The application will now restart to apply the update.")
-        
+        # Windows silent invisible startup script (VBScript triggering BAT)
         bat_path = os.path.join(os.getcwd(), "apply_update.bat")
+        vbs_path = os.path.join(os.getcwd(), "apply_update.vbs")
+        
+        py_exe = sys.executable.replace("python.exe", "pythonw.exe")
+        
         with open(bat_path, "w") as f:
-            f.write("@echo off\n")
-            f.write("timeout /t 3 /nobreak > NUL\n")
-            f.write('move /Y "tfc_billing.py" "tfc_billing.py.bak"\n')
-            f.write('move /Y "tfc_billing_update.py" "tfc_billing.py"\n')
-            f.write('start "" "c:/Users/SharpNex/AppData/Local/Programs/Python/Python314/python.exe" "tfc_billing.py"\n')
-            f.write("del \"%~f0\"\n") # self delete bat
+            f.write("@echo off
+")
+            f.write("timeout /t 2 /nobreak > NUL
+")
+            f.write('move /Y "tfc_billing.py" "tfc_billing.py.bak"
+')
+            f.write('move /Y "tfc_billing_update.py" "tfc_billing.py"
+')
+            f.write(f'start "" "{py_exe}" "tfc_billing.py"
+')
+            f.write('del "%~f0"
+')
+            
+        with open(vbs_path, "w") as f:
+            f.write('Set WshShell = CreateObject("WScript.Shell")
+')
+            f.write(f'WshShell.Run chr(34) & "{bat_path}" & Chr(34), 0
+')
+            f.write('Set objFSO = CreateObject("Scripting.FileSystemObject")
+')
+            f.write('objFSO.DeleteFile WScript.ScriptFullName
+')
             
         import subprocess
-        subprocess.Popen(bat_path, shell=True)
-        QApplication.quit()
+        subprocess.Popen(['wscript', vbs_path], creationflags=subprocess.CREATE_NO_WINDOW)
+        import sys
+        sys.exit(0)
         
     def open_user_manual(self):
         dlg = UserManualDialog(self)
