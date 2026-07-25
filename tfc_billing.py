@@ -515,7 +515,7 @@ sys.excepthook = safe_excepthook
 def migrate_legacy_data(new_base):
     try:
         # Legacy search paths
-        appdata_base = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), "TFC_POS")
+        appdata_base = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), "SmartPOS")
         script_dir_base = os.path.dirname(os.path.abspath(__file__))
         
         for old_base in [appdata_base, script_dir_base]:
@@ -524,7 +524,7 @@ def migrate_legacy_data(new_base):
                 
             # Migrate Database file
             old_db = os.path.join(old_base, "tfc_outlet.db")
-            new_db = os.path.join(new_base, "tfc_outlet.db")
+            new_db = os.path.join(new_base, "smartpos.db")
             if os.path.exists(old_db) and not os.path.exists(new_db):
                 shutil.copy2(old_db, new_db)
                 
@@ -559,11 +559,10 @@ def migrate_legacy_data(new_base):
     except Exception as e:
         print(f"Error during legacy migration: {e}")
 
-BASE_DIR = os.path.join(os.path.expanduser('~'), "Documents", "TFC_POS")
-migrate_legacy_data(BASE_DIR)
+BASE_DIR = os.path.join(os.path.expanduser('~'), "Documents", "SmartPOS")
 os.makedirs(BASE_DIR, exist_ok=True)
 
-DB_FILE = os.path.join(BASE_DIR, "tfc_outlet.db")
+DB_FILE = os.path.join(BASE_DIR, "smartpos.db")
 DB_VERSION = "2.6"
 BILLS_DIR = os.path.join(BASE_DIR, "bills")
 os.makedirs(BILLS_DIR, exist_ok=True)
