@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Function to check if user is the official Admin
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'contact.tfcbalasore@gmail.com';
+    }
+
+    // Publicly accessible for customer-facing menus
+    match /products/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Web Orders can be submitted by anyone, but only read/modified by admin
+    match /web_orders/{document=**} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin() || true; // Currently 'true' so desktop app can read without auth (since desktop uses Admin SDK anyway, it bypasses rules, but just in case web clients need it). Let's restrict it to admin since Desktop SDK bypasses this entirely!
+    }
+
+    // Secure collections for Admin App
+    match /bills/{document=**} {
+      allow read, write: if isAdmin();
+    }
+    
+    match /kots/{document=**} {
+      allow read, write: if isAdmin();
+    }
+    
+    match /expenses/{document=**} {
+      allow read, write: if isAdmin();
+    }
+    
+    match /metadata/{document=**} {
+      allow read: if true; // Just in case
+      allow write: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Environment and Data
+*.db
+*.sqlite
+*.bak
+backups/
+bills/
+error.log
+json_debug.log
+
+# Build files
+build/
+dist/
+*.spec
+Compile/
+
+# Scratch files / Patches
+patch*.py
+*.txt
+*.pdf
+output*.txt
+temp.txt
+
+# Node
+node_modules/
+package-lock.json
+
+# IDE / OS
+.vscode/
+.DS_Store
+*.csv
+*.xlsx
+
+# Secrets (IMPORTANT: MUST NOT BE PUSHED TO GITHUB!)
+serviceAccountKey.json
+config.json
+smtp_config.json
+
+# The new installer folder if present
+NEW VERSION READY TO INSTALL/
