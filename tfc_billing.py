@@ -24,7 +24,7 @@ import re as re_module
 import requests
 import subprocess
 
-APP_VERSION = "1.2.3"
+APP_VERSION = "1.2.4"
 import math
 import random
 import os
@@ -7476,7 +7476,6 @@ class MainWindow(QMainWindow):
             if not download_url:
                 QMessageBox.warning(self, "Update Error", "An update was found but no download URL is configured on the server.")
                 return
-                
             reply = QMessageBox.question(
                 self, "System Update Available", 
                 f"Version {latest_version} is ready for installation.\\n\\nProceed with update?\\n(Your database will remain untouched.)",
@@ -7495,7 +7494,10 @@ class MainWindow(QMainWindow):
         self.update_dlg.show()
         
         self.update_thread = QThread()
-        dest_path = os.path.join(os.getcwd(), "tfc_billing_update.py")
+        import sys
+        is_exe = getattr(sys, 'frozen', False)
+        ext = ".exe" if is_exe else ".py"
+        dest_path = os.path.join(os.getcwd(), f"update_temp{ext}")
         self.update_worker = UpdateWorker(url, dest_path)
         self.update_worker.moveToThread(self.update_thread)
         
@@ -7518,19 +7520,28 @@ class MainWindow(QMainWindow):
         
         import sys
         import subprocess
+        import os
 
         # Windows silent invisible startup script (VBScript triggering BAT)
         bat_path = os.path.join(os.getcwd(), "apply_update.bat")
         vbs_path = os.path.join(os.getcwd(), "apply_update.vbs")
         
-        py_exe = sys.executable.replace("python.exe", "pythonw.exe")
+        is_exe = getattr(sys, 'frozen', False)
         
         with open(bat_path, "w") as f:
             f.write("@echo off\n")
             f.write("timeout /t 2 /nobreak > NUL\n")
-            f.write('move /Y "tfc_billing.py" "tfc_billing.py.bak"\n')
-            f.write('move /Y "tfc_billing_update.py" "tfc_billing.py"\n')
-            f.write(f'start "" "{py_exe}" "tfc_billing.py"\n')
+            if is_exe:
+                current_exe = sys.executable
+                exe_name = os.path.basename(current_exe)
+                f.write(f'move /Y "{exe_name}" "{exe_name}.bak"\n')
+                f.write(f'move /Y "update_temp.exe" "{exe_name}"\n')
+                f.write(f'start "" "{exe_name}"\n')
+            else:
+                py_exe = sys.executable.replace("python.exe", "pythonw.exe")
+                f.write('move /Y "tfc_billing.py" "tfc_billing.py.bak"\n')
+                f.write('move /Y "update_temp.py" "tfc_billing.py"\n')
+                f.write(f'start "" "{py_exe}" "tfc_billing.py"\n')
             f.write('del "%~f0"\n')
             
         with open(vbs_path, "w") as f:
@@ -10557,7 +10568,13 @@ class GlobalFocusFilter(QObject):
                 
         return super().eventFilter(obj, event)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
+    import os, glob
+    try:
+        for old_file in glob.glob('*.bak'):
+            os.remove(old_file)
+    except Exception:
+        pass
     app = QApplication(sys.argv)
     
     # Install global keyboard navigation filter
