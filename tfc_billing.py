@@ -24,7 +24,7 @@ import re as re_module
 import requests
 import subprocess
 
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.1"
 import math
 import random
 import os
