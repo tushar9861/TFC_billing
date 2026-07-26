@@ -631,8 +631,8 @@ class PricingWindow(QDialog):
         if db:
             try:
                 conf_doc = db.collection('app_config').document('pricing_settings').get()
-                if conf_doc and conf_doc.exists:
-                    d = conf_doc.to_dict()
+                if conf_doc:
+                    d = conf_doc
                     trial_text = d.get('trial_text', trial_text) or trial_text
                     wa_text = d.get('whatsapp_text', wa_text) or wa_text
                     wa_url = d.get('whatsapp_url', wa_url) or wa_url

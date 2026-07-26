@@ -988,8 +988,8 @@ class DistributorDashboard(QMainWindow):
         if db:
             try:
                 conf = db.collection('app_config').document('pricing_settings').get()
-                if conf and conf.exists:
-                    d = conf.to_dict()
+                if conf:
+                    d = conf
                     self.prc_trial_input.setText(d.get('trial_text', ''))
                     self.prc_wa_txt_input.setText(d.get('whatsapp_text', ''))
                     self.prc_wa_url_input.setText(d.get('whatsapp_url', ''))
