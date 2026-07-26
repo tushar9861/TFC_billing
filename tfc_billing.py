@@ -336,7 +336,7 @@ class ModernLoginScreen(QDialog):
         
         # Center Logo
         self.center_logo = QLabel(self)
-        logo_path = os.path.join(BASE_DIR, "blingxen_centered_logo.png")
+        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "blingxen_centered_logo.png")
         if os.path.exists(logo_path):
             self.center_logo.setPixmap(QPixmap(logo_path).scaled(300, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         self.center_logo.setStyleSheet("background: transparent;")
@@ -358,6 +358,7 @@ class ModernLoginScreen(QDialog):
             logo_h = self.center_logo.pixmap().height()
             self.center_logo.move(int(split_x - (logo_w / 2)), int((self.height() - logo_h) / 2))
             self.center_logo.raise_()
+            self.center_logo.show()
 
     def get_greeting(self):
         hour = datetime.datetime.now().hour
@@ -825,7 +826,7 @@ class PremiumActionModal(QDialog):
         header_layout.addStretch()
         header_layout.addWidget(btn_back)
         logo_icon = QLabel()
-        logo_path = os.path.join(BASE_DIR, "blingxen_centered_logo.png")
+        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "blingxen_centered_logo.png")
         if os.path.exists(logo_path):
             logo_icon.setPixmap(QPixmap(logo_path).scaled(150, 50, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         header_layout.addWidget(logo_icon)
@@ -926,7 +927,7 @@ class HomeWindow(QDialog):
         btn_back.clicked.connect(self.close)
         header_layout.addWidget(btn_back)
         logo_icon = QLabel()
-        logo_path = os.path.join(BASE_DIR, "blingxen_centered_logo.png")
+        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "blingxen_centered_logo.png")
         if os.path.exists(logo_path):
             logo_icon.setPixmap(QPixmap(logo_path).scaled(150, 50, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         header_layout.addWidget(logo_icon)
@@ -1068,7 +1069,7 @@ class FeaturesWindow(QDialog):
         btn_back.clicked.connect(self.close)
         header_layout.addWidget(btn_back)
         logo_icon = QLabel()
-        logo_path = os.path.join(BASE_DIR, "blingxen_centered_logo.png")
+        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "blingxen_centered_logo.png")
         if os.path.exists(logo_path):
             logo_icon.setPixmap(QPixmap(logo_path).scaled(150, 50, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         header_layout.addWidget(logo_icon)
@@ -1157,7 +1158,7 @@ class SupportWindow(QDialog):
         btn_back.clicked.connect(self.close)
         header_layout.addWidget(btn_back)
         logo_icon = QLabel()
-        logo_path = os.path.join(BASE_DIR, "blingxen_centered_logo.png")
+        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "blingxen_centered_logo.png")
         if os.path.exists(logo_path):
             logo_icon.setPixmap(QPixmap(logo_path).scaled(150, 50, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         header_layout.addWidget(logo_icon)
