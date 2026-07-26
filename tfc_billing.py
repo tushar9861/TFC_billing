@@ -9388,21 +9388,14 @@ class ProfitLossAnalyticsDialog(QDialog):
         self.conn = conn
         self.setWindowTitle("Profit & Loss Analytics - BlingZen")
         
-        # Professional frameless window
+        # Frameless window that opens maximized (100% screen)
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         self.setAttribute(Qt.WA_TranslucentBackground)
         
-        screen = QApplication.primaryScreen().geometry()
-        self._screen = screen
-        w, h = int(screen.width() * 0.80), screen.height()
-        self._win_w, self._win_h = w, h
-        
         self.init_ui()
         
-        # Force size AFTER layout is built — this overrides Qt's sizeHint()
-        self.setMinimumSize(w, h)
-        self.resize(w, h)
-        self.move((screen.width() - w) // 2, 0)
+        # showMaximized is the ONLY reliable 100% size on frameless windows
+        self.showMaximized()
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
