@@ -1783,6 +1783,14 @@ def init_db():
             date TEXT NOT NULL
         )
         ''')
+        
+        # Automated COGS migration
+        try:
+            c.execute("ALTER TABLE expenses ADD COLUMN item_name TEXT")
+            c.execute("ALTER TABLE expenses ADD COLUMN item_qty INTEGER")
+            c.execute("ALTER TABLE expenses ADD COLUMN ingredients_used TEXT")
+        except:
+            pass
         # Add quotes table
         c.execute('''
         CREATE TABLE IF NOT EXISTS quotes (
@@ -1901,7 +1909,8 @@ class RevenueDialog(QDialog):
         self.parent_window = parent
         self.current_editing_id = None
         self.setWindowTitle("Revenue and Expense Management")
-        self.setGeometry(250, 150, 1100, 618)
+        screen = QApplication.primaryScreen().geometry()
+        self.resize(int(screen.width() * 0.9), int(screen.height() * 0.9))
         self.setStyleSheet("""
             QDialog { background: #f7f7f7; }
             QLineEdit, QComboBox { border: 1px solid #ccc; border-radius: 4px; padding: 4px; background: #f9f9f9; }
@@ -1974,8 +1983,8 @@ class RevenueDialog(QDialog):
         left_layout.addLayout(search_layout)
         
         left_layout.addWidget(QLabel("Expenses (double-click to edit):"))
-        self.expenses_table = QTableWidget(0, 4)
-        self.expenses_table.setHorizontalHeaderLabels(["Date", "Category", "Description", "Amount"])
+        self.expenses_table = QTableWidget(0, 7)
+        self.expenses_table.setHorizontalHeaderLabels(["Date", "Category", "Description", "Amount", "Item Sold", "Qty", "Ingredients Used"])
         self.expenses_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         left_layout.addWidget(self.expenses_table)
         
@@ -2024,8 +2033,8 @@ class RevenueDialog(QDialog):
         start_date = self.start_date_edit.date().toString("yyyy-MM-dd")
         end_date = self.end_date_edit.date().toString("yyyy-MM-dd")
         c = self.conn.cursor()
-        c.execute("SELECT id, date, category, description, amount FROM expenses WHERE date(date) BETWEEN ? AND ? ORDER BY date DESC", (start_date, end_date))
-        for expense_id, date, category, description, amount in c.fetchall():
+        c.execute("SELECT id, date, category, description, amount, item_name, item_qty, ingredients_used FROM expenses WHERE date(date) BETWEEN ? AND ? ORDER BY date DESC", (start_date, end_date))
+        for expense_id, date, category, description, amount, item_name, item_qty, ingredients_used in c.fetchall():
             row = self.expenses_table.rowCount()
             self.expenses_table.insertRow(row)
             date_item = QTableWidgetItem(date[:10])
@@ -2034,6 +2043,9 @@ class RevenueDialog(QDialog):
             self.expenses_table.setItem(row, 1, QTableWidgetItem(category))
             self.expenses_table.setItem(row, 2, QTableWidgetItem(description))
             self.expenses_table.setItem(row, 3, QTableWidgetItem(f"₹{(amount or 0.0):.2f}"))
+            self.expenses_table.setItem(row, 4, QTableWidgetItem(str(item_name or "")))
+            self.expenses_table.setItem(row, 5, QTableWidgetItem(str(item_qty or "")))
+            self.expenses_table.setItem(row, 6, QTableWidgetItem(str(ingredients_used or "")))
 
     def save_expense(self):
         category = self.expense_category.currentText()
@@ -10887,6 +10899,39 @@ class MainWindow(QMainWindow):
                 c.execute("UPDATE kots SET status = 'completed' WHERE kot_no = ?", (self.current_kot_no,))
                 
             self.conn.commit()
+            
+            # --- Automated COGS Entry ---
+            try:
+                for item in items:
+                    c.execute("SELECT id FROM products WHERE name = ? AND inventory_type = ?", (item["name"], self.current_menu))
+                    prod_row = c.fetchone()
+                    if prod_row:
+                        prod_id = prod_row[0]
+                        c.execute('''SELECT i.name, pr.quantity, i.unit, i.cost_per_unit 
+                                     FROM product_recipes pr
+                                     JOIN ingredients i ON pr.ingredient_id = i.id
+                                     WHERE pr.product_id = ?''', (prod_id,))
+                        recipe_items = c.fetchall()
+                        if recipe_items:
+                            total_cost = 0.0
+                            ing_details = []
+                            for r_name, r_qty, r_unit, r_cost in recipe_items:
+                                used_qty = r_qty * item["qty"]
+                                ing_cost = used_qty * r_cost
+                                total_cost += ing_cost
+                                ing_details.append(f"{r_name} ({used_qty:.2g}{r_unit})")
+                            
+                            if total_cost > 0:
+                                ing_str = ", ".join(ing_details)
+                                c.execute('''INSERT INTO expenses 
+                                    (category, description, amount, date, item_name, item_qty, ingredients_used)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                                    ("Raw Material (COGS)", f"COGS for {item['name']}", total_cost, bill_data["date"],
+                                     item['name'], item['qty'], ing_str))
+                self.conn.commit()
+            except Exception as cogs_error:
+                log_exception(cogs_error)
+                print(f"Failed to record COGS: {cogs_error}")
             
             # --- Send a copy to admin if configured ---
             self.send_admin_copy_of_bill(bill_no, bill_data, pdf_path)
