@@ -334,14 +334,6 @@ class ModernLoginScreen(QDialog):
         self.logged_in_user = None
         self.init_ui()
         
-        # Center Logo
-        self.center_logo = QLabel(self)
-        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "blingxen_centered_logo.png")
-        if os.path.exists(logo_path):
-            self.center_logo.setPixmap(QPixmap(logo_path).scaled(300, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-        self.center_logo.setStyleSheet("background: transparent;")
-        self.center_logo.setAttribute(Qt.WA_TransparentForMouseEvents)
-
         # Overlay
         self.overlay = LoadingOverlay(self)
         self.overlay.resize(self.size())
@@ -350,15 +342,6 @@ class ModernLoginScreen(QDialog):
         super().resizeEvent(event)
         if hasattr(self, 'overlay'):
             self.overlay.resize(self.size())
-        if hasattr(self, 'center_logo') and self.center_logo.pixmap():
-            # Left side is 45% width, so the split is at width * 0.45
-            split_x = self.width() * 0.45
-            logo_w = self.center_logo.pixmap().width()
-            # Place the logo vertically centered
-            logo_h = self.center_logo.pixmap().height()
-            self.center_logo.move(int(split_x - (logo_w / 2)), int((self.height() - logo_h) / 2))
-            self.center_logo.raise_()
-            self.center_logo.show()
 
     def get_greeting(self):
         hour = datetime.datetime.now().hour
@@ -380,9 +363,25 @@ class ModernLoginScreen(QDialog):
         self.left_side = AnimatedBackground()
         left_layout = QVBoxLayout(self.left_side)
         left_layout.setContentsMargins(60, 60, 60, 60)
-        
+        left_layout.setSpacing(10)
 
-        
+        # ── LOGO (Layout-native, always visible) ──
+        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "blingxen_centered_logo.png")
+        logo_lbl = QLabel()
+        logo_lbl.setAlignment(Qt.AlignHCenter)
+        logo_lbl.setStyleSheet("background: transparent; border: none;")
+        if os.path.exists(logo_path):
+            logo_lbl.setPixmap(QPixmap(logo_path).scaled(180, 180, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        else:
+            logo_lbl.setText("BX")
+            logo_lbl.setStyleSheet("color: white; font-size: 48pt; font-weight: 900; background: transparent;")
+        left_layout.addWidget(logo_lbl, alignment=Qt.AlignHCenter)
+
+        app_title = QLabel("BlingXen")
+        app_title.setAlignment(Qt.AlignHCenter)
+        app_title.setStyleSheet("color: white; font-size: 22pt; font-weight: 900; background: transparent; border: none; letter-spacing: 3px;")
+        left_layout.addWidget(app_title, alignment=Qt.AlignHCenter)
+
         subtitle = QLabel(get_daily_quote())
         subtitle.setStyleSheet("color: rgba(255,255,255,0.7); font-size: 14pt; border: none; background: transparent; margin-top: 5px; font-style: italic;")
         left_layout.addWidget(subtitle)
