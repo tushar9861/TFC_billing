@@ -871,7 +871,7 @@ class DistributorDashboard(QMainWindow):
                 border-radius: 6px;
             }
         """)
-        for item in ["📊  Overview", "🌐  Network Tree", "🔑  License Manager", "🏪  Shops Monitor", "💻  SQL Explorer", "🚀  Update Manager", "🗺️  Locations Map", "💰  Pricing & Plans"]:
+        for item in ["📊  Overview", "🌐  Network Tree", "🔑  License Manager", "🏪  Shops Monitor", "💻  SQL Explorer", "🚀  Update Manager", "🗺️  Locations Map", "💰  Pricing & Plans", "🎨  Theme & Promos"]:
             self.nav.addItem(item)
         self.nav.setCurrentRow(0)
         self.nav.currentRowChanged.connect(self.stack.setCurrentIndex if hasattr(self, 'stack') else lambda i: None)
@@ -894,6 +894,7 @@ class DistributorDashboard(QMainWindow):
         self._build_updater_tab()
         self._build_map_main_tab()
         self._build_pricing_tab()
+        self._build_theme_promo_tab()
         return self.stack
 
     # ── PRICING TAB BUILDER ──────────────────
@@ -1735,6 +1736,78 @@ class DistributorDashboard(QMainWindow):
             )
             self.gen_result.setStyleSheet("color: #ef4444; font-size: 12pt;")
 
+    # ── THEME & PROMOS TAB BUILDER ───────────
+    def _build_theme_promo_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(40, 40, 40, 40)
+        
+        hdr = QLabel("Client Home Screen Theme & Promotions")
+        hdr.setStyleSheet("font-size: 24pt; font-weight: bold; color: #00D26A;")
+        layout.addWidget(hdr)
+        
+        desc = QLabel("Customize the visual appearance and promotional content on the client's main dashboard.")
+        desc.setStyleSheet("color: #aaa; font-size: 12pt; margin-bottom: 20px;")
+        layout.addWidget(desc)
+        
+        form = QFormLayout()
+        form.setLabelAlignment(Qt.AlignRight)
+        form.setSpacing(20)
+        
+        self.theme_primary_input = QLineEdit()
+        self.theme_primary_input.setPlaceholderText("e.g. #e30613 (Primary Accent Color)")
+        
+        self.theme_bg_input = QLineEdit()
+        self.theme_bg_input.setPlaceholderText("e.g. #f0f2f5 (Background Color)")
+        
+        self.promo_html_input = QTextEdit()
+        self.promo_html_input.setPlaceholderText("Enter HTML or plain text for the promotional banner at the top of the dashboard...")
+        self.promo_html_input.setMinimumHeight(150)
+        
+        form.addRow(QLabel("Primary Color:"), self.theme_primary_input)
+        form.addRow(QLabel("Background Color:"), self.theme_bg_input)
+        form.addRow(QLabel("Promotional Banner (HTML):"), self.promo_html_input)
+        
+        layout.addLayout(form)
+        
+        # Load existing
+        if db:
+            try:
+                conf = db.collection('app_config').document('theme_promo').get()
+                if conf:
+                    self.theme_primary_input.setText(conf.get('primary_color', ''))
+                    self.theme_bg_input.setText(conf.get('background_color', ''))
+                    self.promo_html_input.setText(conf.get('promo_html', ''))
+            except: pass
+            
+        layout.addStretch()
+        
+        save_btn = QPushButton("🚀 Push Theme & Promos Globally")
+        save_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #00D26A, stop:1 #00b85c);
+                color: white; font-weight: bold; font-size: 14pt; padding: 15px; border-radius: 8px;
+            }
+            QPushButton:hover { background: #00e676; }
+        """)
+        save_btn.clicked.connect(self._save_theme_promo_config)
+        layout.addWidget(save_btn)
+        
+        self.stack.addWidget(tab)
+
+    def _save_theme_promo_config(self):
+        data = {
+            "primary_color": self.theme_primary_input.text().strip(),
+            "background_color": self.theme_bg_input.text().strip(),
+            "promo_html": self.promo_html_input.toPlainText().strip()
+        }
+        
+        try:
+            from firebase_admin_write import write_theme_promo_config
+            write_theme_promo_config(data)
+            QMessageBox.information(self, "Success", "Theme and Promotional content pushed successfully globally!")
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Failed to push theme config: {e}")
 
 # ─────────────────────────────────────────────
 #  ADMIN LOGIN DIALOG

@@ -9551,6 +9551,43 @@ class MainWindow(QMainWindow):
                     child.setStyleSheet(f"QWidget#productCard {{ {card_style} }} QWidget#productCard:hover {{ background-color: #f8f9fa; }}")
         except Exception as e: pass
 
+    def apply_dynamic_theme_and_promo(self):
+        primary_color = "#e30613"
+        bg_color = "#f0f2f5"
+        promo_html = ""
+        try:
+            from firestore_rest import firestore as db
+            if db:
+                conf = db.get_document('app_config', 'theme_promo')
+                if isinstance(conf, dict):
+                    primary_color = conf.get('primary_color', primary_color) or primary_color
+                    bg_color = conf.get('background_color', bg_color) or bg_color
+                    promo_html = conf.get('promo_html', promo_html)
+        except Exception as e:
+            print("Failed to fetch theme promo config:", e)
+
+        # Apply global stylesheet overrides
+        app = QApplication.instance()
+        if app:
+            style = app.styleSheet()
+            style = style.replace("#e30613", primary_color)
+            style = style.replace("#f0f2f5", bg_color)
+            app.setStyleSheet(style)
+
+        # Apply promotional banner
+        if promo_html:
+            self.promo_banner_widget = QLabel()
+            self.promo_banner_widget.setText(promo_html)
+            self.promo_banner_widget.setTextFormat(Qt.RichText)
+            self.promo_banner_widget.setOpenExternalLinks(True)
+            self.promo_banner_widget.setWordWrap(True)
+            self.promo_banner_widget.setStyleSheet(f"background-color: white; border: 2px solid {primary_color}; border-radius: 8px; padding: 15px; margin: 10px; font-size: 14pt;")
+            
+            # Find the main layout and inject at the top
+            central = self.centralWidget()
+            if central and central.layout():
+                central.layout().insertWidget(0, self.promo_banner_widget)
+
     def init_ui(self):
         big_font = QFont("Segoe UI", 11)
         title_font = QFont("Segoe UI", 16, QFont.Bold)
@@ -10054,6 +10091,9 @@ class MainWindow(QMainWindow):
             shadow = QGraphicsDropShadowEffect(blurRadius=15, xOffset=0, yOffset=4)
             shadow.setColor(QColor(0, 0, 0, 40))
             frame.setGraphicsEffect(shadow)
+            
+        # Apply Theme and Promotions
+        self.apply_dynamic_theme_and_promo()
 
     def check_billing_timer_state(self, *args, **kwargs):
         if not hasattr(self, 'lbl_billing_timer'):

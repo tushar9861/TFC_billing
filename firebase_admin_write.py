@@ -45,6 +45,12 @@ def write_pricing_config(data):
         return True
     raise RuntimeError("Firebase Admin SDK not available.")
 
+def write_theme_promo_config(data):
+    if _init() and _admin_db:
+        _admin_db.collection("app_config").document("theme_promo").set(data)
+        return True
+    raise RuntimeError("Firebase Admin SDK not available.")
+
 def write_updater_config(version, url):
     if _init() and _admin_db:
         _admin_db.collection("app_config").document("updater").set({
