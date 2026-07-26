@@ -559,7 +559,7 @@ class ModernLoginScreen(QDialog):
             
         card_layout.addLayout(links_layout)
         
-        terms = QLabel("By continuing, you agree to BlingZen's <a href='#' style='color:#00D26A; text-decoration:none;'>Terms of Service</a> and <a href='#' style='color:#00D26A; text-decoration:none;'>Privacy Policy</a>")
+        terms = QLabel("By continuing, you agree to BlingXen's <a href='#' style='color:#00D26A; text-decoration:none;'>Terms of Service</a> and <a href='#' style='color:#00D26A; text-decoration:none;'>Privacy Policy</a>")
         terms.setStyleSheet("font-size: 9pt; color: rgba(255, 255, 255, 0.4);")
         terms.setAlignment(Qt.AlignCenter)
         card_layout.addWidget(terms)
@@ -608,7 +608,7 @@ class ModernLoginScreen(QDialog):
 class PricingWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Pricing - BlingZen")
+        self.setWindowTitle("Pricing - BlingXen")
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.init_ui()
@@ -805,7 +805,7 @@ from PyQt5.QtCore import QEvent, pyqtSignal, QObject
 class PremiumActionModal(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Unlock Premium - BlingZen")
+        self.setWindowTitle("Unlock Premium - BlingXen")
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.init_ui()
@@ -836,7 +836,7 @@ class PremiumActionModal(QDialog):
         content_layout = QVBoxLayout()
         content_layout.setAlignment(Qt.AlignCenter)
         
-        lbl_title = QLabel("Unlock BlingZen Premium 🚀")
+        lbl_title = QLabel("Unlock BlingXen Premium 🚀")
         lbl_title.setStyleSheet("color: white; font-size: 32pt; font-weight: bold; margin-bottom: 10px;")
         lbl_title.setAlignment(Qt.AlignCenter)
         content_layout.addWidget(lbl_title)
@@ -901,7 +901,7 @@ class PremiumActionModal(QDialog):
 class HomeWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Home - BlingZen")
+        self.setWindowTitle("Home - BlingXen")
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.init_ui()
@@ -934,7 +934,7 @@ class HomeWindow(QDialog):
 
         header_layout.addStretch()
         
-        lbl_title = QLabel("Welcome to BlingZen")
+        lbl_title = QLabel("Welcome to BlingXen")
         lbl_title.setStyleSheet("color: white; font-size: 32pt; font-weight: bold;")
         header_layout.addWidget(lbl_title)
         header_layout.addStretch()
@@ -1049,7 +1049,7 @@ class HomeWindow(QDialog):
 class FeaturesWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Features - BlingZen")
+        self.setWindowTitle("Features - BlingXen")
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.init_ui()
@@ -1138,7 +1138,7 @@ class FeaturesWindow(QDialog):
 class SupportWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Support - BlingZen")
+        self.setWindowTitle("Support - BlingXen")
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.init_ui()
@@ -1183,7 +1183,7 @@ class SupportWindow(QDialog):
         
         faqs = [
             ("How do I setup my first printer?", "Navigate to the Hardware settings in the Dashboard and add your printer IP or select the USB printer from the list. It takes less than 60 seconds!"),
-            ("Can I use the POS offline?", "Absolutely! BlingZen POS works completely offline. It will automatically sync your bills, KOTs, and inventory when the connection is restored without any manual intervention."),
+            ("Can I use the POS offline?", "Absolutely! BlingXen POS works completely offline. It will automatically sync your bills, KOTs, and inventory when the connection is restored without any manual intervention."),
             ("How do I contact premium support?", "Use the contact information on the right to reach our priority support team. We're available 24/7 for our premium users.")
         ]
         
@@ -1239,7 +1239,7 @@ class SupportWindow(QDialog):
         c_title.setStyleSheet("color: white; font-size: 20pt; font-weight: bold; border: none; background: transparent;")
         contact_layout.addWidget(c_title)
         
-        c_info = QLabel("WhatsApp: 9778561010\\nEmail: support@blingzen.com\\nHours: 24/7 Premium Support")
+        c_info = QLabel("WhatsApp: 9778561010\\nEmail: support@blingxen.com\\nHours: 24/7 Premium Support")
         c_info.setStyleSheet("color: #ccc; font-size: 14pt; line-height: 1.5; border: none; background: transparent; margin-top: 20px;")
         contact_layout.addWidget(c_info)
         contact_layout.addStretch()
@@ -8284,7 +8284,7 @@ class MasterDataDialog(QDialog):
     def __init__(self, conn, parent=None):
         super().__init__(parent)
         self.conn = conn
-        self.setWindowTitle("Master Data Hub - BlingZen")
+        self.setWindowTitle("Master Data Hub - BlingXen")
         
         # Professional frameless window
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
@@ -9370,7 +9370,7 @@ class ProfitLossAnalyticsDialog(QDialog):
     def __init__(self, conn, parent=None):
         super().__init__(parent)
         self.conn = conn
-        self.setWindowTitle("Profit & Loss Analytics - BlingZen")
+        self.setWindowTitle("Profit & Loss Analytics - BlingXen")
         
         # Professional frameless window
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
