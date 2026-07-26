@@ -9378,8 +9378,8 @@ class ProfitLossAnalyticsDialog(QDialog):
         self.setAttribute(Qt.WA_TranslucentBackground)
         
         screen = QApplication.primaryScreen().geometry()
-        w, h = int(screen.width() * 0.90), int(screen.height() * 0.85)
-        self.setGeometry((screen.width() - w) // 2, (screen.height() - h) // 2, w, h)
+        w, h = int(screen.width() * 0.80), screen.height()
+        self.setGeometry((screen.width() - w) // 2, 0, w, h)
         
         self.init_ui()
 
