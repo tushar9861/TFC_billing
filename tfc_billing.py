@@ -334,6 +334,14 @@ class ModernLoginScreen(QDialog):
         self.logged_in_user = None
         self.init_ui()
         
+        # Center Logo
+        self.center_logo = QLabel(self)
+        logo_path = os.path.join(BASE_DIR, "blingxen_centered_logo.png")
+        if os.path.exists(logo_path):
+            self.center_logo.setPixmap(QPixmap(logo_path).scaled(300, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        self.center_logo.setStyleSheet("background: transparent;")
+        self.center_logo.setAttribute(Qt.WA_TransparentForMouseEvents)
+
         # Overlay
         self.overlay = LoadingOverlay(self)
         self.overlay.resize(self.size())
@@ -342,6 +350,14 @@ class ModernLoginScreen(QDialog):
         super().resizeEvent(event)
         if hasattr(self, 'overlay'):
             self.overlay.resize(self.size())
+        if hasattr(self, 'center_logo') and self.center_logo.pixmap():
+            # Left side is 45% width, so the split is at width * 0.45
+            split_x = self.width() * 0.45
+            logo_w = self.center_logo.pixmap().width()
+            # Place the logo vertically centered
+            logo_h = self.center_logo.pixmap().height()
+            self.center_logo.move(int(split_x - (logo_w / 2)), int((self.height() - logo_h) / 2))
+            self.center_logo.raise_()
 
     def get_greeting(self):
         hour = datetime.datetime.now().hour
@@ -364,15 +380,7 @@ class ModernLoginScreen(QDialog):
         left_layout = QVBoxLayout(self.left_side)
         left_layout.setContentsMargins(60, 60, 60, 60)
         
-        logo_layout = QHBoxLayout()
-        logo_icon = QLabel()
-        logo_path = os.path.join(BASE_DIR, "blingzen_wide_logo.png")
-        if os.path.exists(logo_path):
-            pixmap = QPixmap(logo_path).scaled(300, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            logo_icon.setPixmap(pixmap)
-        logo_layout.addWidget(logo_icon)
-        logo_layout.addStretch()
-        left_layout.addLayout(logo_layout)
+
         
         subtitle = QLabel(get_daily_quote())
         subtitle.setStyleSheet("color: rgba(255,255,255,0.7); font-size: 14pt; border: none; background: transparent; margin-top: 5px; font-style: italic;")
@@ -816,6 +824,13 @@ class PremiumActionModal(QDialog):
         btn_back.clicked.connect(self.close)
         header_layout.addStretch()
         header_layout.addWidget(btn_back)
+        logo_icon = QLabel()
+        logo_path = os.path.join(BASE_DIR, "blingxen_centered_logo.png")
+        if os.path.exists(logo_path):
+            logo_icon.setPixmap(QPixmap(logo_path).scaled(150, 50, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        header_layout.addWidget(logo_icon)
+        header_layout.addStretch()
+
         bg_layout.addLayout(header_layout)
 
         content_layout = QVBoxLayout()
@@ -910,6 +925,13 @@ class HomeWindow(QDialog):
         btn_back.setStyleSheet("QPushButton { color: white; background: transparent; border: none; font-size: 14pt; font-weight: bold; } QPushButton:hover { color: #e30613; }")
         btn_back.clicked.connect(self.close)
         header_layout.addWidget(btn_back)
+        logo_icon = QLabel()
+        logo_path = os.path.join(BASE_DIR, "blingxen_centered_logo.png")
+        if os.path.exists(logo_path):
+            logo_icon.setPixmap(QPixmap(logo_path).scaled(150, 50, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        header_layout.addWidget(logo_icon)
+        header_layout.addStretch()
+
         header_layout.addStretch()
         
         lbl_title = QLabel("Welcome to BlingZen")
@@ -1045,6 +1067,13 @@ class FeaturesWindow(QDialog):
         btn_back.setStyleSheet("QPushButton { color: white; background: transparent; border: none; font-size: 14pt; font-weight: bold; } QPushButton:hover { color: #e30613; }")
         btn_back.clicked.connect(self.close)
         header_layout.addWidget(btn_back)
+        logo_icon = QLabel()
+        logo_path = os.path.join(BASE_DIR, "blingxen_centered_logo.png")
+        if os.path.exists(logo_path):
+            logo_icon.setPixmap(QPixmap(logo_path).scaled(150, 50, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        header_layout.addWidget(logo_icon)
+        header_layout.addStretch()
+
         header_layout.addStretch()
         
         lbl_title = QLabel("Powerful Features")
@@ -1127,6 +1156,13 @@ class SupportWindow(QDialog):
         btn_back.setStyleSheet("QPushButton { color: white; background: transparent; border: none; font-size: 14pt; font-weight: bold; } QPushButton:hover { color: #e30613; }")
         btn_back.clicked.connect(self.close)
         header_layout.addWidget(btn_back)
+        logo_icon = QLabel()
+        logo_path = os.path.join(BASE_DIR, "blingxen_centered_logo.png")
+        if os.path.exists(logo_path):
+            logo_icon.setPixmap(QPixmap(logo_path).scaled(150, 50, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        header_layout.addWidget(logo_icon)
+        header_layout.addStretch()
+
         header_layout.addStretch()
         
         lbl_title = QLabel("Help & Support")
