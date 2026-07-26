@@ -8368,9 +8368,10 @@ class MasterDataDialog(QDialog):
             QTabBar::tab {
                 background: transparent; 
                 color: #6c757d; 
-                font-size: 13pt; 
+                font-size: 11pt; 
                 font-weight: 600;
-                padding: 10px 15px; 
+                padding: 10px 18px;
+                margin-right: 4px;
                 border-bottom: 3px solid transparent;
             }
             QTabBar::tab:selected { 
