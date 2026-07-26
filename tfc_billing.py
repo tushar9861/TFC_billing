@@ -9367,6 +9367,384 @@ class ItemCostPlannerDialog(QDialog):
         except Exception as e:
             print("Error loading recipe:", e)
 
+class ProfitLossAnalyticsDialog(QDialog):
+    def __init__(self, conn, parent=None):
+        super().__init__(parent)
+        self.conn = conn
+        self.setWindowTitle("Profit & Loss Analytics - BlingZen")
+        
+        # Professional frameless window
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        
+        screen = QApplication.primaryScreen().geometry()
+        w, h = int(screen.width() * 0.90), int(screen.height() * 0.85)
+        self.setGeometry((screen.width() - w) // 2, (screen.height() - h) // 2, w, h)
+        
+        self.init_ui()
+
+    def init_ui(self):
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        
+        bg_frame = QFrame()
+        bg_frame.setObjectName("MainFrame")
+        bg_frame.setStyleSheet("""
+            QFrame#MainFrame {
+                background-color: #f8f9fa;
+                border-radius: 12px;
+                border: 1px solid #ced4da;
+            }
+        """)
+        
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(20)
+        shadow.setColor(QColor(0, 0, 0, 80))
+        shadow.setOffset(0, 4)
+        bg_frame.setGraphicsEffect(shadow)
+        
+        frame_layout = QVBoxLayout(bg_frame)
+        frame_layout.setContentsMargins(0, 0, 0, 0)
+        frame_layout.setSpacing(0)
+        
+        # Header
+        header_widget = QWidget()
+        header_widget.setStyleSheet("background-color: white; border-top-left-radius: 12px; border-top-right-radius: 12px; border-bottom: 1px solid #dee2e6;")
+        header_layout = QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(30, 20, 30, 20)
+        
+        title = QLabel("📈 Profit & Loss Analytics")
+        title.setStyleSheet("color: #212529; font-size: 22pt; font-weight: 800; border: none;")
+        
+        btn_close = QPushButton("✕ Close")
+        btn_close.setCursor(Qt.PointingHandCursor)
+        btn_close.setStyleSheet("""
+            QPushButton { 
+                background-color: #f8f9fa; color: #dc3545; font-size: 13pt; font-weight: bold; 
+                border: 1px solid #dee2e6; border-radius: 6px; padding: 8px 15px;
+            }
+            QPushButton:hover { background-color: #dc3545; color: white; border-color: #dc3545; }
+        """)
+        btn_close.clicked.connect(self.close)
+        
+        header_layout.addWidget(title)
+        header_layout.addStretch()
+        header_layout.addWidget(btn_close)
+        frame_layout.addWidget(header_widget)
+        
+        # KPI Cards Layout
+        self.kpi_layout = QHBoxLayout()
+        self.kpi_layout.setContentsMargins(30, 20, 30, 20)
+        self.kpi_layout.setSpacing(20)
+        
+        self.lbl_revenue = self.create_kpi_card("Total Revenue", "₹0.00", "#0d6efd")
+        self.lbl_cogs = self.create_kpi_card("Total COGS", "₹0.00", "#fd7e14")
+        self.lbl_expenses = self.create_kpi_card("Operating Expenses", "₹0.00", "#dc3545")
+        self.lbl_profit = self.create_kpi_card("Net Profit", "₹0.00", "#198754")
+        self.lbl_margin = self.create_kpi_card("Gross Margin", "0.00%", "#6f42c1")
+        
+        frame_layout.addLayout(self.kpi_layout)
+        
+        # Split Layout: Sidebar and Content
+        split_widget = QWidget()
+        split_layout = QHBoxLayout(split_widget)
+        split_layout.setContentsMargins(0, 0, 0, 0)
+        split_layout.setSpacing(0)
+        
+        self.sidebar = QListWidget()
+        self.sidebar.setFixedWidth(260)
+        self.sidebar.setFocusPolicy(Qt.NoFocus)
+        self.sidebar.setStyleSheet("""
+            QListWidget {
+                background-color: #f8f9fa; border: none; border-right: 1px solid #dee2e6;
+                border-bottom-left-radius: 12px; outline: none; padding-top: 15px;
+            }
+            QListWidget::item { font-size: 14pt; font-weight: 600; color: #495057; padding: 15px 25px; border-left: 4px solid transparent; }
+            QListWidget::item:hover { background-color: #e9ecef; color: #212529; }
+            QListWidget::item:selected { background-color: white; color: #0d6efd; border-left: 4px solid #0d6efd; font-weight: bold; }
+        """)
+        
+        self.content_stack = QStackedWidget()
+        self.content_stack.setStyleSheet("QStackedWidget { background-color: white; border-bottom-right-radius: 12px; }")
+        self.sidebar.currentRowChanged.connect(self.content_stack.setCurrentIndex)
+        
+        # Initialize Tabs
+        self.init_item_wise_tab()
+        self.init_time_wise_tab()
+        self.init_customer_wise_tab()
+        
+        self.sidebar.setCurrentRow(0)
+        split_layout.addWidget(self.sidebar)
+        split_layout.addWidget(self.content_stack)
+        
+        frame_layout.addWidget(split_widget)
+        main_layout.addWidget(bg_frame)
+        
+        QShortcut(QKeySequence("Esc"), self).activated.connect(self.close)
+        
+        # Calculate Data
+        self.calculate_financials()
+
+    def create_kpi_card(self, title, value, color):
+        card = QFrame()
+        card.setStyleSheet(f"""
+            QFrame {{
+                background: white; border-radius: 10px; border: 1px solid #dee2e6;
+                border-left: 5px solid {color};
+            }}
+        """)
+        lay = QVBoxLayout(card)
+        lay.setContentsMargins(15, 15, 15, 15)
+        
+        lbl_title = QLabel(title)
+        lbl_title.setStyleSheet("color: #6c757d; font-size: 11pt; font-weight: bold; border: none;")
+        
+        lbl_val = QLabel(value)
+        lbl_val.setStyleSheet(f"color: {color}; font-size: 20pt; font-weight: 900; border: none;")
+        
+        lay.addWidget(lbl_title)
+        lay.addWidget(lbl_val)
+        self.kpi_layout.addWidget(card)
+        return lbl_val
+
+    def init_item_wise_tab(self):
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(30, 30, 30, 30)
+        
+        header_lay = QHBoxLayout()
+        header_lay.addWidget(QLabel("<h2>🛒 Item-wise Profitability</h2>"))
+        
+        self.sort_combo = QComboBox()
+        self.sort_combo.addItems(["Sort by Net Profit (High to Low)", "Sort by Net Profit (Low to High)", "Sort by Revenue (High to Low)"])
+        self.sort_combo.setStyleSheet("padding: 8px; font-size: 12pt; border: 1px solid #ced4da; border-radius: 5px;")
+        self.sort_combo.currentIndexChanged.connect(self.populate_item_table)
+        header_lay.addWidget(self.sort_combo, alignment=Qt.AlignRight)
+        
+        lay.addLayout(header_lay)
+        
+        self.item_table = self.create_styled_table(["Item Name", "Qty Sold", "Revenue", "COGS", "Net Profit", "Margin %"])
+        lay.addWidget(self.item_table)
+        
+        self.sidebar.addItem(QListWidgetItem("🛒 Item-wise P&L"))
+        self.content_stack.addWidget(w)
+
+    def init_time_wise_tab(self):
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(30, 30, 30, 30)
+        lay.addWidget(QLabel("<h2>📅 Day-wise & Month-wise P&L</h2>"))
+        
+        self.time_table = self.create_styled_table(["Date / Period", "Revenue", "COGS", "Expenses", "Net Profit"])
+        lay.addWidget(self.time_table)
+        
+        self.sidebar.addItem(QListWidgetItem("📅 Time-wise P&L"))
+        self.content_stack.addWidget(w)
+
+    def init_customer_wise_tab(self):
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(30, 30, 30, 30)
+        lay.addWidget(QLabel("<h2>👥 Customer-wise Profitability</h2>"))
+        
+        self.cust_table = self.create_styled_table(["Customer Name", "Phone", "Total Bills", "Revenue", "Net Profit"])
+        lay.addWidget(self.cust_table)
+        
+        self.sidebar.addItem(QListWidgetItem("👥 Customer-wise P&L"))
+        self.content_stack.addWidget(w)
+
+    def create_styled_table(self, headers):
+        t = QTableWidget(0, len(headers))
+        t.setHorizontalHeaderLabels(headers)
+        t.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        t.setSelectionBehavior(QTableWidget.SelectRows)
+        t.setEditTriggers(QTableWidget.NoEditTriggers)
+        t.setAlternatingRowColors(True)
+        t.setShowGrid(False)
+        t.setStyleSheet("""
+            QTableWidget { background-color: white; alternate-background-color: #f8f9fa; color: #212529; font-size: 12pt; border: 1px solid #dee2e6; border-radius: 8px; }
+            QTableWidget::item { padding: 10px; border-bottom: 1px solid #f1f3f5; }
+            QHeaderView::section { background-color: #f8f9fa; color: #495057; font-weight: bold; font-size: 11pt; padding: 12px; border: none; border-bottom: 2px solid #dee2e6; }
+        """)
+        t.verticalHeader().setVisible(False)
+        return t
+
+    def calculate_financials(self):
+        c = self.conn.cursor()
+        
+        # 1. Map Products to COGS (Recipe Cost)
+        c.execute("SELECT id, name FROM products")
+        products = {row[1]: row[0] for row in c.fetchall()}
+        
+        product_cogs = {}
+        c.execute("""
+            SELECT pr.product_id, SUM(pr.quantity * i.cost_per_unit) 
+            FROM product_recipes pr 
+            JOIN ingredients i ON pr.ingredient_id = i.id 
+            GROUP BY pr.product_id
+        """)
+        for pid, cost in c.fetchall():
+            product_cogs[pid] = cost or 0.0
+
+        # 2. Parse Bills for Revenue and COGS
+        import json
+        self.item_stats = {} # name -> {'qty':0, 'rev':0, 'cogs':0}
+        self.day_stats = {} # date -> {'rev':0, 'cogs':0, 'exp':0}
+        self.cust_stats = {} # name_phone -> {'name':'', 'phone':'', 'bills':0, 'rev':0, 'cogs':0}
+        
+        total_revenue = 0.0
+        total_cogs = 0.0
+        
+        c.execute("SELECT customer_name, phone, dt, items, total FROM bills")
+        for cust_name, phone, dt, items_json, total_bill in c.fetchall():
+            date_str = dt.split()[0] if dt else "Unknown"
+            if date_str not in self.day_stats:
+                self.day_stats[date_str] = {'rev':0, 'cogs':0, 'exp':0}
+            
+            cust_key = f"{cust_name}_{phone}"
+            if cust_key not in self.cust_stats:
+                self.cust_stats[cust_key] = {'name': cust_name or "Walk-in", 'phone': phone or "-", 'bills': 0, 'rev':0, 'cogs':0}
+            
+            self.cust_stats[cust_key]['bills'] += 1
+            
+            bill_cogs = 0.0
+            try:
+                items = json.loads(items_json)
+                for item in items:
+                    name = item.get('name', '')
+                    qty = item.get('qty', 0)
+                    rev = item.get('total', 0)
+                    
+                    pid = products.get(name)
+                    cogs = (product_cogs.get(pid, 0.0) * qty) if pid else 0.0
+                    
+                    if name not in self.item_stats:
+                        self.item_stats[name] = {'qty':0, 'rev':0, 'cogs':0}
+                    self.item_stats[name]['qty'] += qty
+                    self.item_stats[name]['rev'] += rev
+                    self.item_stats[name]['cogs'] += cogs
+                    
+                    bill_cogs += cogs
+            except: pass
+            
+            # Use actual bill total for revenue (accounts for discounts/taxes)
+            self.day_stats[date_str]['rev'] += total_bill
+            self.day_stats[date_str]['cogs'] += bill_cogs
+            self.cust_stats[cust_key]['rev'] += total_bill
+            self.cust_stats[cust_key]['cogs'] += bill_cogs
+            
+            total_revenue += total_bill
+            total_cogs += bill_cogs
+
+        # 3. Calculate Expenses
+        total_expenses = 0.0
+        
+        c.execute("SELECT date, amount FROM expenses")
+        for dt, amt in c.fetchall():
+            d = dt.split()[0] if dt else "Unknown"
+            if d not in self.day_stats: self.day_stats[d] = {'rev':0, 'cogs':0, 'exp':0}
+            self.day_stats[d]['exp'] += amt
+            total_expenses += amt
+            
+        try:
+            c.execute("SELECT date, net_amount FROM advanced_expenses")
+            for dt, amt in c.fetchall():
+                d = dt.split()[0] if dt else "Unknown"
+                if d not in self.day_stats: self.day_stats[d] = {'rev':0, 'cogs':0, 'exp':0}
+                self.day_stats[d]['exp'] += amt
+                total_expenses += amt
+        except: pass
+        
+        try:
+            c.execute("SELECT po_date, total_amount FROM purchase_orders WHERE status='completed'")
+            for dt, amt in c.fetchall():
+                d = dt.split()[0] if dt else "Unknown"
+                if d not in self.day_stats: self.day_stats[d] = {'rev':0, 'cogs':0, 'exp':0}
+                if amt:
+                    self.day_stats[d]['exp'] += amt
+                    total_expenses += amt
+        except: pass
+
+        # Update KPIs
+        net_profit = total_revenue - total_cogs - total_expenses
+        gross_margin = ((total_revenue - total_cogs) / total_revenue * 100) if total_revenue > 0 else 0.0
+        
+        self.lbl_revenue.setText(f"₹{total_revenue:,.2f}")
+        self.lbl_cogs.setText(f"₹{total_cogs:,.2f}")
+        self.lbl_expenses.setText(f"₹{total_expenses:,.2f}")
+        
+        if net_profit >= 0:
+            self.lbl_profit.setText(f"₹{net_profit:,.2f}")
+            self.lbl_profit.setStyleSheet("color: #198754; font-size: 20pt; font-weight: 900; border: none;")
+        else:
+            self.lbl_profit.setText(f"-₹{abs(net_profit):,.2f}")
+            self.lbl_profit.setStyleSheet("color: #dc3545; font-size: 20pt; font-weight: 900; border: none;")
+            
+        self.lbl_margin.setText(f"{gross_margin:.1f}%")
+
+        # Populate Tables
+        self.populate_item_table()
+        
+        self.time_table.setRowCount(0)
+        for date_str in sorted(self.day_stats.keys(), reverse=True):
+            st = self.day_stats[date_str]
+            net = st['rev'] - st['cogs'] - st['exp']
+            r = self.time_table.rowCount()
+            self.time_table.insertRow(r)
+            self.time_table.setItem(r, 0, QTableWidgetItem(date_str))
+            self.time_table.setItem(r, 1, QTableWidgetItem(f"₹{st['rev']:,.2f}"))
+            self.time_table.setItem(r, 2, QTableWidgetItem(f"₹{st['cogs']:,.2f}"))
+            self.time_table.setItem(r, 3, QTableWidgetItem(f"₹{st['exp']:,.2f}"))
+            
+            it_net = QTableWidgetItem(f"₹{net:,.2f}")
+            if net < 0: it_net.setForeground(QBrush(QColor("#dc3545")))
+            else: it_net.setForeground(QBrush(QColor("#198754")))
+            self.time_table.setItem(r, 4, it_net)
+
+        self.cust_table.setRowCount(0)
+        sorted_custs = sorted(self.cust_stats.values(), key=lambda x: (x['rev']-x['cogs']), reverse=True)
+        for c_stat in sorted_custs:
+            net = c_stat['rev'] - c_stat['cogs']
+            r = self.cust_table.rowCount()
+            self.cust_table.insertRow(r)
+            self.cust_table.setItem(r, 0, QTableWidgetItem(c_stat['name']))
+            self.cust_table.setItem(r, 1, QTableWidgetItem(c_stat['phone']))
+            self.cust_table.setItem(r, 2, QTableWidgetItem(str(c_stat['bills'])))
+            self.cust_table.setItem(r, 3, QTableWidgetItem(f"₹{c_stat['rev']:,.2f}"))
+            
+            it_net = QTableWidgetItem(f"₹{net:,.2f}")
+            if net < 0: it_net.setForeground(QBrush(QColor("#dc3545")))
+            else: it_net.setForeground(QBrush(QColor("#198754")))
+            self.cust_table.setItem(r, 4, it_net)
+
+    def populate_item_table(self):
+        self.item_table.setRowCount(0)
+        items_list = []
+        for name, st in self.item_stats.items():
+            net = st['rev'] - st['cogs']
+            margin = (net / st['rev'] * 100) if st['rev'] > 0 else 0
+            items_list.append((name, st['qty'], st['rev'], st['cogs'], net, margin))
+            
+        sort_idx = self.sort_combo.currentIndex()
+        if sort_idx == 0: items_list.sort(key=lambda x: x[4], reverse=True) # Net High to Low
+        elif sort_idx == 1: items_list.sort(key=lambda x: x[4], reverse=False) # Net Low to High
+        elif sort_idx == 2: items_list.sort(key=lambda x: x[2], reverse=True) # Rev High to Low
+        
+        for name, qty, rev, cogs, net, margin in items_list:
+            r = self.item_table.rowCount()
+            self.item_table.insertRow(r)
+            self.item_table.setItem(r, 0, QTableWidgetItem(name))
+            self.item_table.setItem(r, 1, QTableWidgetItem(str(qty)))
+            self.item_table.setItem(r, 2, QTableWidgetItem(f"₹{rev:,.2f}"))
+            self.item_table.setItem(r, 3, QTableWidgetItem(f"₹{cogs:,.2f}"))
+            
+            it_net = QTableWidgetItem(f"₹{net:,.2f}")
+            if net < 0: it_net.setForeground(QBrush(QColor("#dc3545")))
+            else: it_net.setForeground(QBrush(QColor("#198754")))
+            self.item_table.setItem(r, 4, it_net)
+            
+            self.item_table.setItem(r, 5, QTableWidgetItem(f"{margin:.1f}%"))
+
 class MainWindow(QMainWindow):
     def __init__(self, user_data=None):
         super().__init__()
@@ -10418,6 +10796,7 @@ class MainWindow(QMainWindow):
         # Add actions to Business Menu
         if 'reports' in self.current_user.get('permissions', []): 
             business_menu.addAction(action_reports)
+            business_menu.addAction(action_profit_loss)
             business_menu.addAction(action_analytics)
         if 'expenses' in self.current_user.get('permissions', []): 
             business_menu.addAction(action_revenue)
