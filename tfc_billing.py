@@ -1024,16 +1024,6 @@ class HomeWindow(QDialog):
             self.parent().show_premium_modal()
         self.close()
 
-    def _handle_premium(self):
-        if self.parent() and hasattr(self.parent(), 'show_premium_modal'):
-            self.parent().show_premium_modal()
-        self.close()
-
-    def _handle_premium(self):
-        if self.parent() and hasattr(self.parent(), 'show_premium_modal'):
-            self.parent().show_premium_modal()
-        self.close()
-
 class FeaturesWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1110,6 +1100,11 @@ class FeaturesWindow(QDialog):
             
         bg_layout.addWidget(tree)
         main_layout.addWidget(self.bg)
+
+    def _handle_premium(self):
+        if self.parent() and hasattr(self.parent(), 'show_premium_modal'):
+            self.parent().show_premium_modal()
+        self.close()
 
 class SupportWindow(QDialog):
     def __init__(self, parent=None):
@@ -1230,6 +1225,11 @@ class SupportWindow(QDialog):
         
         bg_layout.addLayout(content_layout)
         main_layout.addWidget(self.bg)
+
+    def _handle_premium(self):
+        if self.parent() and hasattr(self.parent(), 'show_premium_modal'):
+            self.parent().show_premium_modal()
+        self.close()
 
 class FirestoreSignals(QObject):
     new_order = pyqtSignal(dict)
