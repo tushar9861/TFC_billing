@@ -849,7 +849,7 @@ class DistributorDashboard(QMainWindow):
 
         self.nav = QListWidget()
         self.nav.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.nav.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.nav.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.nav.setStyleSheet("""
             QListWidget { border: none; background: transparent; outline: none; padding: 8px 0; }
             QListWidget::item {
@@ -871,12 +871,11 @@ class DistributorDashboard(QMainWindow):
                 border-radius: 6px;
             }
         """)
-        for item in ["📊  Overview", "🌐  Network Tree", "🔑  License Manager", "🏪  Shops Monitor", "💻  SQL Explorer", "🚀  Update Manager", "🗺️  Locations Map"]:
+        for item in ["📊  Overview", "🌐  Network Tree", "🔑  License Manager", "🏪  Shops Monitor", "💻  SQL Explorer", "🚀  Update Manager", "🗺️  Locations Map", "💰  Pricing & Plans"]:
             self.nav.addItem(item)
         self.nav.setCurrentRow(0)
         self.nav.currentRowChanged.connect(self.stack.setCurrentIndex if hasattr(self, 'stack') else lambda i: None)
-        sl.addWidget(self.nav)
-        sl.addStretch()
+        sl.addWidget(self.nav, 1) # Added stretch factor 1 to make it fill space
 
         self.sync_status = QLabel("⏳ Syncing...")
         self.sync_status.setStyleSheet("color: #4a5568; font-size: 10pt; padding: 12px 24px;")
@@ -894,7 +893,147 @@ class DistributorDashboard(QMainWindow):
         self._build_sql_tab()
         self._build_updater_tab()
         self._build_map_main_tab()
+        self._build_pricing_tab()
         return self.stack
+
+    # ── PRICING TAB BUILDER ──────────────────
+    def _build_pricing_tab(self):
+        ptab = QWidget()
+        layout = QVBoxLayout(ptab)
+        layout.setContentsMargins(40, 40, 40, 40)
+        
+        hdr = QLabel("Global App Pricing & Configuration")
+        hdr.setStyleSheet("font-size: 24pt; font-weight: bold; color: #00D26A;")
+        layout.addWidget(hdr)
+        
+        desc = QLabel("Changes saved here will instantly update the Pricing Window on the live app for all users globally.")
+        desc.setStyleSheet("color: #aaa; font-size: 12pt; margin-bottom: 20px;")
+        layout.addWidget(desc)
+        
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        
+        sc_widget = QWidget()
+        sc_widget.setStyleSheet("background: transparent;")
+        sc_layout = QVBoxLayout(sc_widget)
+        sc_layout.setSpacing(30)
+        
+        # Trial and Contact Settings
+        stg_grp = QGroupBox("General Display Settings")
+        stg_grp.setStyleSheet("QGroupBox { color: #fff; font-size: 14pt; font-weight: bold; border: 1px solid #2a3450; padding-top: 20px; }")
+        stg_layout = QFormLayout(stg_grp)
+        stg_layout.setSpacing(15)
+        
+        self.prc_trial_input = QLineEdit("🎁 Free 30 Days Trial for new users with a valid license. (*Terms and Conditions Apply for Free After-Sales Services)")
+        self.prc_wa_txt_input = QLineEdit("💬 Click here for new license registration or distributorship")
+        self.prc_wa_url_input = QLineEdit("https://wa.me/919778561010")
+        
+        for w in [self.prc_trial_input, self.prc_wa_txt_input, self.prc_wa_url_input]:
+            w.setStyleSheet("background: #0E1628; border: 1px solid #2a3450; padding: 10px; color: white; border-radius: 5px;")
+            
+        stg_layout.addRow("Trial Label Text:", self.prc_trial_input)
+        stg_layout.addRow("WhatsApp Button Text:", self.prc_wa_txt_input)
+        stg_layout.addRow("WhatsApp URL:", self.prc_wa_url_input)
+        sc_layout.addWidget(stg_grp)
+        
+        # Plans
+        self.plan_inputs = []
+        default_plans = [
+            {"title": "Monthly", "price": "₹399", "period": "/mo", "subtitle": "Perfect for small shops", "features": "1 Register, Basic Reporting, Email Support, Free After-Sales Service*", "highlight": False},
+            {"title": "Yearly", "price": "₹3799", "period": "/yr", "subtitle": "Best for growing restaurants", "features": "5 Registers, Advanced Analytics, Priority 24/7 Support, Inventory Management, Free After-Sales Service*", "highlight": True},
+            {"title": "3 Years", "price": "₹5999", "period": "/3yrs", "subtitle": "For multi-chain giants", "features": "Unlimited Registers, Custom Integrations, Dedicated Account Manager, White-label Options, Free After-Sales Service*", "highlight": False}
+        ]
+        
+        for i, default_plan in enumerate(default_plans):
+            grp = QGroupBox(f"Plan {i+1} Configuration")
+            grp.setStyleSheet("QGroupBox { color: #00D26A; font-size: 14pt; font-weight: bold; border: 1px solid #2a3450; padding-top: 20px; }")
+            glayout = QFormLayout(grp)
+            glayout.setSpacing(15)
+            
+            inputs = {}
+            for field, val in default_plan.items():
+                if field == "highlight":
+                    inp = QCheckBox("Highlight this plan (e.g. Pro tier)")
+                    inp.setChecked(val)
+                    inp.setStyleSheet("color: white;")
+                    glayout.addRow("", inp)
+                else:
+                    inp = QLineEdit(str(val))
+                    inp.setStyleSheet("background: #0E1628; border: 1px solid #2a3450; padding: 10px; color: white; border-radius: 5px;")
+                    glayout.addRow(field.capitalize() + ":", inp)
+                inputs[field] = inp
+            self.plan_inputs.append(inputs)
+            sc_layout.addWidget(grp)
+            
+        sc_layout.addStretch()
+        scroll.setWidget(sc_widget)
+        layout.addWidget(scroll)
+        
+        save_btn = QPushButton("🚀 Push Changes to Live App")
+        save_btn.setStyleSheet("""
+            QPushButton {
+                background: #00D26A; color: black; font-weight: bold; font-size: 14pt;
+                padding: 15px; border-radius: 8px;
+            }
+            QPushButton:hover { background: #00b85c; }
+        """)
+        save_btn.setCursor(Qt.PointingHandCursor)
+        save_btn.clicked.connect(self._save_pricing_config)
+        layout.addWidget(save_btn)
+        
+        self.stack.addWidget(ptab)
+        
+        # Load existing if available
+        if db:
+            try:
+                conf = db.collection('app_config').document('pricing_settings').get()
+                if conf and conf.exists:
+                    d = conf.to_dict()
+                    self.prc_trial_input.setText(d.get('trial_text', ''))
+                    self.prc_wa_txt_input.setText(d.get('whatsapp_text', ''))
+                    self.prc_wa_url_input.setText(d.get('whatsapp_url', ''))
+                    
+                    plans = d.get('plans', [])
+                    for i, pdata in enumerate(plans):
+                        if i < len(self.plan_inputs):
+                            for k, v in pdata.items():
+                                if k == "highlight":
+                                    self.plan_inputs[i][k].setChecked(bool(v))
+                                elif k in self.plan_inputs[i]:
+                                    self.plan_inputs[i][k].setText(str(v))
+            except Exception:
+                pass
+
+    def _save_pricing_config(self):
+        if not db:
+            QMessageBox.warning(self, "Error", "Database not connected.")
+            return
+            
+        plans = []
+        for p in self.plan_inputs:
+            plans.append({
+                "title": p["title"].text(),
+                "price": p["price"].text(),
+                "period": p["period"].text(),
+                "subtitle": p["subtitle"].text(),
+                "features": p["features"].text(),
+                "highlight": p["highlight"].isChecked()
+            })
+            
+        data = {
+            "trial_text": self.prc_trial_input.text(),
+            "whatsapp_text": self.prc_wa_txt_input.text(),
+            "whatsapp_url": self.prc_wa_url_input.text(),
+            "plans": plans
+        }
+        
+        try:
+            from firebase_admin_write import write_pricing_config
+            write_pricing_config(data)
+            QMessageBox.information(self, "Success", "Pricing configuration pushed successfully globally!")
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Failed to push config: {e}")
 
     # ── TAB BUILDERS ─────────────────────────
     def _build_overview(self):

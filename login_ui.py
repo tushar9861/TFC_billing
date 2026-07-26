@@ -10,34 +10,15 @@ from PyQt5.QtGui import *
 class AnimatedBackground(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.particles = []
-        for _ in range(40):
-            self.particles.append({
-                'x': random.random(),
-                'y': random.random(),
-                'size': random.uniform(2, 8),
-                'speed': random.uniform(0.0005, 0.002),
-                'angle': random.uniform(0, math.pi * 2),
-                'color': QColor(255, 255, 255, int(random.uniform(10, 80)))
-            })
-            
+        self.time = 0.0
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_animation)
-        self.timer.start(16) # ~60fps
-        
+        self.timer.start(30) # ~33fps
         self.mouse_pos = QPoint(0, 0)
         self.setMouseTracking(True)
         
     def update_animation(self):
-        for p in self.particles:
-            p['x'] += math.cos(p['angle']) * p['speed']
-            p['y'] += math.sin(p['angle']) * p['speed']
-            
-            if p['x'] < 0: p['x'] = 1.0
-            if p['x'] > 1.0: p['x'] = 0.0
-            if p['y'] < 0: p['y'] = 1.0
-            if p['y'] > 1.0: p['y'] = 0.0
-            
+        self.time += 0.02
         self.update()
 
     def mouseMoveEvent(self, event):
@@ -51,34 +32,48 @@ class AnimatedBackground(QWidget):
         width = self.width()
         height = self.height()
         
-        # Draw gradient background (Deep space blue/black)
-        grad = QLinearGradient(0, 0, width, height)
-        grad.setColorAt(0, QColor("#05070D"))
-        grad.setColorAt(1, QColor("#0a1120"))
-        painter.fillRect(0, 0, width, height, grad)
+        # Base deep dark background
+        painter.fillRect(0, 0, width, height, QColor("#050811"))
         
-        # Parallax offset
-        dx = (self.mouse_pos.x() - width/2) * 0.03
-        dy = (self.mouse_pos.y() - height/2) * 0.03
+        import math
+        # Dynamic Multi-color orbs
+        cx1 = width * 0.5 + math.sin(self.time * 0.8) * width * 0.3
+        cy1 = height * 0.5 + math.cos(self.time * 0.5) * height * 0.3
         
-        # Draw particles
-        for p in self.particles:
-            x = (p['x'] * width) - dx * (p['size'] / 2)
-            y = (p['y'] * height) - dy * (p['size'] / 2)
+        cx2 = width * 0.5 + math.cos(self.time * 0.6) * width * 0.4
+        cy2 = height * 0.5 + math.sin(self.time * 0.7) * height * 0.4
+        
+        cx3 = width * 0.5 + math.sin(self.time * 0.4) * width * 0.2
+        cy3 = height * 0.5 + math.cos(self.time * 0.9) * height * 0.3
+        
+        def draw_orb(cx, cy, radius, color):
+            grad = QRadialGradient(cx, cy, radius)
+            grad.setColorAt(0, color)
+            color_transparent = QColor(color)
+            color_transparent.setAlpha(0)
+            grad.setColorAt(1, color_transparent)
+            painter.setBrush(grad)
             painter.setPen(Qt.NoPen)
-            painter.setBrush(p['color'])
-            painter.drawEllipse(QPointF(x, y), p['size'], p['size'])
+            painter.drawEllipse(QPointF(cx, cy), radius, radius)
+            
+        draw_orb(cx1, cy1, max(width, height) * 0.6, QColor(0, 210, 106, 25))
+        draw_orb(cx2, cy2, max(width, height) * 0.65, QColor(0, 123, 255, 20))
+        draw_orb(cx3, cy3, max(width, height) * 0.5, QColor(138, 43, 226, 20))
 
 class FloatingInput(QWidget):
-    def __init__(self, placeholder, is_password=False, parent=None):
+    def __init__(self, placeholder, is_password=False, suffix_widget=None, parent=None):
         super().__init__(parent)
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0,0,0,0)
-        self.layout.setSpacing(5)
+        self.layout.setSpacing(8)
         
         self.label = QLabel(placeholder)
-        self.label.setStyleSheet("color: #888; font-size: 10pt; font-weight: bold; margin-left: 5px;")
+        self.label.setStyleSheet("color: #a0aab5; font-size: 10pt; font-weight: bold; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;")
         self.layout.addWidget(self.label)
+        
+        self.input_layout = QHBoxLayout()
+        self.input_layout.setContentsMargins(0,0,0,0)
+        self.input_layout.setSpacing(10)
         
         self.input = QLineEdit()
         self.input.setPlaceholderText(placeholder)
@@ -87,19 +82,25 @@ class FloatingInput(QWidget):
             
         self.input.setStyleSheet("""
             QLineEdit {
-                padding: 15px 20px;
-                border: 2px solid rgba(255, 255, 255, 0.12);
+                padding: 16px 20px;
+                border: 1px solid rgba(255, 255, 255, 0.15);
                 border-radius: 12px;
-                background: rgba(255, 255, 255, 0.05);
+                background: rgba(0, 0, 0, 0.2);
                 color: white;
                 font-size: 14pt;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             }
             QLineEdit:focus {
-                border: 2px solid #00D26A;
-                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid #00D26A;
+                background: rgba(0, 0, 0, 0.3);
             }
         """)
-        self.layout.addWidget(self.input)
+        self.input_layout.addWidget(self.input)
+        
+        if suffix_widget:
+            self.input_layout.addWidget(suffix_widget)
+            
+        self.layout.addLayout(self.input_layout)
 
     def text(self):
         return self.input.text()

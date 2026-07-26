@@ -24,6 +24,11 @@ import re as re_module
 import requests
 import subprocess
 
+try:
+    from firestore_rest import firestore as db
+except ImportError:
+    db = None
+
 APP_VERSION = "1.2.5"
 import math
 import random
@@ -46,34 +51,20 @@ except ImportError:
 class AnimatedBackground(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.particles = []
-        for _ in range(40):
-            self.particles.append({
-                'x': random.random(),
-                'y': random.random(),
-                'size': random.uniform(2, 8),
-                'speed': random.uniform(0.0005, 0.002),
-                'angle': random.uniform(0, math.pi * 2),
-                'color': QColor(255, 255, 255, int(random.uniform(10, 80)))
-            })
-            
+        self.time = 0.0
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_animation)
-        self.timer.start(16) # ~60fps
-        
+        self.timer.start(30) # ~33fps
         self.mouse_pos = QPoint(0, 0)
         self.setMouseTracking(True)
         
     def update_animation(self):
-        for p in self.particles:
-            p['x'] += math.cos(p['angle']) * p['speed']
-            p['y'] += math.sin(p['angle']) * p['speed']
-            
-            if p['x'] < 0: p['x'] = 1.0
-            if p['x'] > 1.0: p['x'] = 0.0
-            if p['y'] < 0: p['y'] = 1.0
-            if p['y'] > 1.0: p['y'] = 0.0
-            
+        self.time += 0.02
+        if not hasattr(self, 'target_mx'): 
+            self.target_mx = self.width() / 2
+            self.target_my = self.height() / 2
+        self.target_mx += (self.mouse_pos.x() - self.target_mx) * 0.08
+        self.target_my += (self.mouse_pos.y() - self.target_my) * 0.08
         self.update()
 
     def mouseMoveEvent(self, event):
@@ -87,34 +78,95 @@ class AnimatedBackground(QWidget):
         width = self.width()
         height = self.height()
         
-        # Draw gradient background (Deep space blue/black)
-        grad = QLinearGradient(0, 0, width, height)
-        grad.setColorAt(0, QColor("#05070D"))
-        grad.setColorAt(1, QColor("#0a1120"))
-        painter.fillRect(0, 0, width, height, grad)
+        # Base deep dark background
+        painter.fillRect(0, 0, width, height, QColor("#050811"))
         
-        # Parallax offset
-        dx = (self.mouse_pos.x() - width/2) * 0.03
-        dy = (self.mouse_pos.y() - height/2) * 0.03
+        import math
+        # Dynamic Multi-color orbs
+        cx1 = width * 0.5 + math.sin(self.time * 0.8) * width * 0.3
+        cy1 = height * 0.5 + math.cos(self.time * 0.5) * height * 0.3
         
-        # Draw particles
-        for p in self.particles:
-            x = (p['x'] * width) - dx * (p['size'] / 2)
-            y = (p['y'] * height) - dy * (p['size'] / 2)
+        cx2 = width * 0.5 + math.cos(self.time * 0.6) * width * 0.4
+        cy2 = height * 0.5 + math.sin(self.time * 0.7) * height * 0.4
+        
+        cx3 = width * 0.5 + math.sin(self.time * 0.4) * width * 0.2
+        cy3 = height * 0.5 + math.cos(self.time * 0.9) * height * 0.3
+        
+        def draw_orb(cx, cy, radius, color):
+            grad = QRadialGradient(cx, cy, radius)
+            grad.setColorAt(0, color)
+            color_transparent = QColor(color)
+            color_transparent.setAlpha(0)
+            grad.setColorAt(1, color_transparent)
+            painter.setBrush(grad)
             painter.setPen(Qt.NoPen)
-            painter.setBrush(p['color'])
-            painter.drawEllipse(QPointF(x, y), p['size'], p['size'])
+            painter.drawEllipse(QPointF(cx, cy), radius, radius)
+            
+        painter.setCompositionMode(QPainter.CompositionMode_Screen)
+        draw_orb(cx1, cy1, max(width, height) * 0.6, QColor(0, 210, 106, 120))
+        draw_orb(cx2, cy2, max(width, height) * 0.65, QColor(0, 123, 255, 100))
+        draw_orb(cx3, cy3, max(width, height) * 0.5, QColor(138, 43, 226, 100))
+        
+        # Interactive mouse trailing orb
+        if hasattr(self, 'target_mx'):
+            draw_orb(self.target_mx, self.target_my, max(width, height) * 0.35, QColor(255, 100, 150, 140))
+
+class AnimatedBorderCard(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.angle = 0
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_angle)
+        self.timer.start(20) # 50fps for smooth rotation
+        
+    def update_angle(self):
+        self.angle = (self.angle + 2) % 360
+        self.update()
+        
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        rect = self.rect()
+        rect_f = rect.adjusted(2, 2, -2, -2)
+        
+        # Neon Border
+        center = QPointF(rect_f.center())
+        grad = QConicalGradient(center, self.angle)
+        grad.setColorAt(0.0, QColor('#00F3FF'))
+        grad.setColorAt(0.25, QColor('#FF007F'))
+        grad.setColorAt(0.5, QColor('#7B00FF'))
+        grad.setColorAt(0.75, QColor('#00FF66'))
+        grad.setColorAt(1.0, QColor('#00F3FF'))
+        
+        pen = QPen(QBrush(grad), 4)
+        pen.setJoinStyle(Qt.RoundJoin)
+        painter.setPen(pen)
+        
+        # Glassmorphism Background
+        bg_grad = QLinearGradient(0, 0, self.width(), self.height())
+        bg_grad.setColorAt(0, QColor(255, 255, 255, 12))
+        bg_grad.setColorAt(1, QColor(255, 255, 255, 2))
+        painter.setBrush(QBrush(bg_grad))
+        
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(rect_f), 28, 28)
+        painter.drawPath(path)
 
 class FloatingInput(QWidget):
-    def __init__(self, placeholder, is_password=False, parent=None):
+    def __init__(self, placeholder, is_password=False, suffix_widget=None, parent=None):
         super().__init__(parent)
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0,0,0,0)
-        self.layout.setSpacing(5)
+        self.layout.setSpacing(8)
         
         self.label = QLabel(placeholder)
-        self.label.setStyleSheet("color: #888; font-size: 10pt; font-weight: bold; margin-left: 5px;")
+        self.label.setStyleSheet("color: #a0aab5; font-size: 10pt; font-weight: bold; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;")
         self.layout.addWidget(self.label)
+        
+        self.input_layout = QHBoxLayout()
+        self.input_layout.setContentsMargins(0,0,0,0)
+        self.input_layout.setSpacing(10)
         
         self.input = QLineEdit()
         self.input.setPlaceholderText(placeholder)
@@ -123,19 +175,27 @@ class FloatingInput(QWidget):
             
         self.input.setStyleSheet("""
             QLineEdit {
-                padding: 15px 20px;
-                border: 2px solid rgba(255, 255, 255, 0.12);
+                min-height: 56px;
+                max-height: 56px;
+                padding: 0px 20px;
+                border: 1px solid rgba(255, 255, 255, 0.15);
                 border-radius: 12px;
-                background: rgba(255, 255, 255, 0.05);
+                background: rgba(0, 0, 0, 0.2);
                 color: white;
                 font-size: 14pt;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             }
             QLineEdit:focus {
-                border: 2px solid #00D26A;
-                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid #00D26A;
+                background: rgba(0, 0, 0, 0.3);
             }
         """)
-        self.layout.addWidget(self.input)
+        self.input_layout.addWidget(self.input)
+        
+        if suffix_widget:
+            self.input_layout.addWidget(suffix_widget)
+            
+        self.layout.addLayout(self.input_layout)
 
     def text(self):
         return self.input.text()
@@ -236,6 +296,35 @@ class RecentAccountCard(QPushButton):
         layout.addWidget(lbl)
         layout.addStretch()
 
+import datetime
+
+DAILY_QUOTES = [
+    "Empowering your business. Seamless billing. Smarter sales.",
+    "Innovate. Grow. Succeed. Your business companion.",
+    "Streamline your operations and boost your revenue.",
+    "Smart tools for smart business owners.",
+    "Focus on your customers, we'll handle the rest.",
+    "Taking your business to the next level.",
+    "Data-driven insights for modern enterprises.",
+    "Simplicity and power in one platform.",
+    "Your vision, our technology.",
+    "Built for speed, designed for growth.",
+    "Transforming transactions into relationships.",
+    "Elevate your brand with seamless experiences.",
+    "Unleash the full potential of your business.",
+    "Efficiency meets elegance.",
+    "The smart way to manage and scale.",
+    "Precision, performance, and peace of mind.",
+    "Redefining the future of retail and hospitality.",
+    "Manage less, grow more.",
+    "Empowering entrepreneurs every single day.",
+    "Where technology meets business excellence."
+]
+
+def get_daily_quote():
+    day_index = datetime.date.today().toordinal()
+    return DAILY_QUOTES[day_index % len(DAILY_QUOTES)]
+
 class ModernLoginScreen(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -256,9 +345,14 @@ class ModernLoginScreen(QDialog):
 
     def get_greeting(self):
         hour = datetime.datetime.now().hour
-        if hour < 12: return "Good Morning"
-        elif hour < 18: return "Good Afternoon"
+        if 5 <= hour < 12: return "Good Morning"
+        elif 12 <= hour < 17: return "Good Afternoon"
         else: return "Good Evening"
+
+    def update_clock(self):
+        now = datetime.datetime.now()
+        self.clock_label.setText(now.strftime("%H:%M"))
+        self.date_label.setText(now.strftime("%A, %B %d").upper())
 
     def init_ui(self):
         main_layout = QHBoxLayout(self)
@@ -268,49 +362,77 @@ class ModernLoginScreen(QDialog):
         # LEFT SIDE (45%)
         self.left_side = AnimatedBackground()
         left_layout = QVBoxLayout(self.left_side)
-        left_layout.setContentsMargins(50, 50, 50, 50)
+        left_layout.setContentsMargins(60, 60, 60, 60)
         
-        # Clock
-        self.clock_lbl = QLabel(datetime.datetime.now().strftime("%I:%M %p"))
-        self.clock_lbl.setStyleSheet("color: rgba(255,255,255,0.5); font-size: 14pt; font-weight: bold;")
-        left_layout.addWidget(self.clock_lbl, alignment=Qt.AlignLeft | Qt.AlignTop)
+        logo_layout = QHBoxLayout()
+        logo_icon = QLabel()
+        logo_path = os.path.join(BASE_DIR, "blingzen_wide_logo.png")
+        if os.path.exists(logo_path):
+            pixmap = QPixmap(logo_path).scaled(300, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            logo_icon.setPixmap(pixmap)
+        logo_layout.addWidget(logo_icon)
+        logo_layout.addStretch()
+        left_layout.addLayout(logo_layout)
         
-        # Update clock
-        self.clock_timer = QTimer(self)
-        self.clock_timer.timeout.connect(lambda: self.clock_lbl.setText(datetime.datetime.now().strftime("%I:%M %p")))
-        self.clock_timer.start(1000)
+        subtitle = QLabel(get_daily_quote())
+        subtitle.setStyleSheet("color: rgba(255,255,255,0.7); font-size: 14pt; border: none; background: transparent; margin-top: 5px; font-style: italic;")
+        left_layout.addWidget(subtitle)
         
         left_layout.addStretch()
         
-        title = QLabel("SmartPOS Billing")
-        title.setStyleSheet("color: white; font-size: 42pt; font-weight: bold; font-family: 'Segoe UI';")
-        left_layout.addWidget(title)
+        # Real-time sleek Clock Overlay
+        self.clock_label = QLabel()
+        self.clock_label.setStyleSheet("color: white; font-size: 64pt; font-family: 'Segoe UI Light', -apple-system; font-weight: 200; background: transparent;")
+        self.date_label = QLabel()
+        self.date_label.setStyleSheet("color: rgba(255, 255, 255, 0.6); font-size: 16pt; font-family: -apple-system; background: transparent; letter-spacing: 2px;")
         
-        subtitle = QLabel("Empowering your business.\\nSeamless billing.\\nSmarter sales.")
-        subtitle.setStyleSheet("color: #00D26A; font-size: 20pt; font-weight: bold;")
-        left_layout.addWidget(subtitle)
+        clock_layout = QVBoxLayout()
+        clock_layout.setSpacing(0)
+        clock_layout.addWidget(self.clock_label)
+        clock_layout.addWidget(self.date_label)
+        left_layout.addLayout(clock_layout)
         
-        left_layout.addSpacing(40)
-        left_layout.addWidget(FeatureCard("⚡", "Lightning Fast Billing", "Serve customers faster than ever."))
-        left_layout.addWidget(FeatureCard("📊", "Business Analytics", "Real-time insights and reports."))
-        left_layout.addWidget(FeatureCard("☁", "Cloud Sync", "Your data is always safe and synced."))
+        self.clock_timer = QTimer(self)
+        self.clock_timer.timeout.connect(self.update_clock)
+        self.clock_timer.start(1000)
+        
+        left_layout.addStretch()
+        left_layout.addWidget(FeatureCard("⚡", "Lightning Fast", "Unmatched performance & speed."))
+        left_layout.addWidget(FeatureCard("🔐", "Enterprise Security", "Bank-grade data protection."))
         left_layout.addStretch()
         
         # RIGHT SIDE (55%)
         self.right_side = QWidget()
         self.right_side.setStyleSheet("background-color: #0A0F18;")
         right_layout = QVBoxLayout(self.right_side)
-        right_layout.setAlignment(Qt.AlignCenter)
+        right_layout.setContentsMargins(40, 40, 40, 20)
         
-        self.login_card = QWidget()
+        # Nav Buttons
+        nav_layout = QHBoxLayout()
+        nav_layout.addStretch()
+        for btn_text in ["Home", "Features", "Pricing", "Support"]:
+            btn = QPushButton(btn_text)
+            btn.setStyleSheet("""
+                QPushButton { color: rgba(255,255,255,0.6); font-size: 11pt; font-weight: bold; background: transparent; border: none; padding: 10px 15px; }
+                QPushButton:hover { color: white; }
+            """)
+            btn.setCursor(Qt.PointingHandCursor)
+            if btn_text == "Pricing":
+                btn.clicked.connect(self.show_pricing_window)
+            nav_layout.addWidget(btn)
+        right_layout.addLayout(nav_layout)
+        
+        right_layout.addStretch()
+        
+        center_layout = QHBoxLayout()
+        center_layout.addStretch()
+        self.login_card = AnimatedBorderCard()
         self.login_card.setFixedWidth(500)
-        self.login_card.setStyleSheet("""
-            QWidget {
-                background: #121821;
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                border-radius: 24px;
-            }
-        """)
+        self.login_card.setStyleSheet("background: transparent;")
+        
+        center_layout.addWidget(self.login_card)
+        center_layout.addStretch()
+        right_layout.addLayout(center_layout)
         
         card_layout = QVBoxLayout(self.login_card)
         card_layout.setContentsMargins(50, 50, 50, 50)
@@ -325,30 +447,21 @@ class ModernLoginScreen(QDialog):
         card_layout.addWidget(card_title)
         
         # Dynamic Email Field Wrapper
-        self.email_wrapper = QWidget()
-        ew_layout = QHBoxLayout(self.email_wrapper)
-        ew_layout.setContentsMargins(0,0,0,0)
-        ew_layout.setSpacing(10)
-        
-        self.email = FloatingInput("Login ID / Email")
-        ew_layout.addWidget(self.email, 1)
-        
         self.history_btn = QPushButton("▼")
         self.history_btn.setToolTip("Recent Accounts")
         self.history_btn.setCursor(Qt.PointingHandCursor)
-        self.history_btn.setFixedSize(50, 75)
+        self.history_btn.setFixedSize(56, 56)
         self.history_btn.setStyleSheet("""
             QPushButton {
-                background: rgba(255, 255, 255, 0.05);
-                border: 2px solid rgba(255, 255, 255, 0.12);
+                background: rgba(0, 0, 0, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.15);
                 border-radius: 12px;
                 color: white;
                 font-size: 14pt;
-                margin-top: 20px;
             }
             QPushButton:hover {
-                background: rgba(255, 255, 255, 0.1);
-                border: 2px solid #00D26A;
+                background: rgba(0, 0, 0, 0.3);
+                border: 1px solid #00D26A;
             }
             QPushButton::menu-indicator {
                 image: none;
@@ -373,9 +486,9 @@ class ModernLoginScreen(QDialog):
             }
         """)
         self.history_btn.setMenu(self.history_menu)
-        ew_layout.addWidget(self.history_btn)
         
-        card_layout.addWidget(self.email_wrapper)
+        self.email = FloatingInput("Login ID / Email", suffix_widget=self.history_btn)
+        card_layout.addWidget(self.email)
         
         self.password = FloatingInput("Password", is_password=True)
         self.password.input.returnPressed.connect(self.trigger_login)
@@ -432,24 +545,24 @@ class ModernLoginScreen(QDialog):
             
         card_layout.addLayout(links_layout)
         
-        btn_exit = QPushButton("Exit")
-        btn_exit.setCursor(Qt.PointingHandCursor)
-        btn_exit.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                color: #555;
-                border: none;
-                font-size: 12pt;
-                margin-top: 10px;
-            }
-            QPushButton:hover {
-                color: #FF5252;
-            }
-        """)
-        btn_exit.clicked.connect(sys.exit)
-        card_layout.addWidget(btn_exit, alignment=Qt.AlignCenter)
+        terms = QLabel("By continuing, you agree to BlingZen's <a href='#' style='color:#00D26A; text-decoration:none;'>Terms of Service</a> and <a href='#' style='color:#00D26A; text-decoration:none;'>Privacy Policy</a>")
+        terms.setStyleSheet("font-size: 9pt; color: rgba(255, 255, 255, 0.4);")
+        terms.setAlignment(Qt.AlignCenter)
+        card_layout.addWidget(terms)
         
-        right_layout.addWidget(self.login_card)
+        right_layout.addStretch()
+        
+        # Micro font Contact Lead Engineer
+        contact_layout = QHBoxLayout()
+        contact_layout.addStretch()
+        contact_btn = QPushButton("Contact Lead Engineer: 9778561010 📱")
+        contact_btn.setCursor(Qt.PointingHandCursor)
+        contact_btn.setStyleSheet("""
+            QPushButton { color: rgba(255, 255, 255, 0.25); font-size: 8pt; background: transparent; border: none; }
+            QPushButton:hover { color: #00D26A; }
+        """)
+        contact_layout.addWidget(contact_btn)
+        right_layout.addLayout(contact_layout)
         
         main_layout.addWidget(self.left_side, 45)
         main_layout.addWidget(self.right_side, 55)
@@ -457,6 +570,176 @@ class ModernLoginScreen(QDialog):
     def trigger_login(self):
         # Stub to be overridden
         pass
+
+    def show_pricing_window(self):
+        self.pricing_win = PricingWindow(self)
+        self.pricing_win.showFullScreen()
+
+class PricingWindow(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Pricing - BlingZen")
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.init_ui()
+        
+    def init_ui(self):
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.bg = AnimatedBackground()
+        bg_layout = QVBoxLayout(self.bg)
+        bg_layout.setContentsMargins(40, 40, 40, 40)
+        
+        header_layout = QHBoxLayout()
+        back_btn = QPushButton("← Back to Login")
+        back_btn.setCursor(Qt.PointingHandCursor)
+        back_btn.setStyleSheet("""
+            QPushButton { color: #aaa; font-size: 14pt; font-weight: bold; background: transparent; border: none; padding: 10px; }
+            QPushButton:hover { color: white; }
+        """)
+        back_btn.clicked.connect(self.close)
+        header_layout.addWidget(back_btn)
+        header_layout.addStretch()
+        bg_layout.addLayout(header_layout)
+        
+        title = QLabel("Choose the Right Plan for Your Business")
+        title.setStyleSheet("color: white; font-size: 36pt; font-weight: bold; font-family: -apple-system; margin-top: 20px; background: transparent;")
+        title.setAlignment(Qt.AlignCenter)
+        bg_layout.addWidget(title)
+        
+        subtitle = QLabel("Simple, transparent pricing that grows with you.")
+        subtitle.setStyleSheet("color: rgba(255,255,255,0.7); font-size: 16pt; margin-bottom: 40px; background: transparent;")
+        subtitle.setAlignment(Qt.AlignCenter)
+        bg_layout.addWidget(subtitle)
+        
+        cards_layout = QHBoxLayout()
+        cards_layout.setSpacing(40)
+        cards_layout.setAlignment(Qt.AlignCenter)
+        
+        # Fetch dynamic settings
+        trial_text = "🎁 Free 30 Days Trial for new users with a valid license. (*Terms and Conditions Apply for Free After-Sales Services)"
+        wa_text = "💬 Click here for new license registration or distributorship"
+        wa_url = "https://wa.me/919778561010"
+        
+        plans_data = [
+            {"title": "Monthly", "price": "₹399", "period": "/mo", "subtitle": "Perfect for small shops", "features": ["1 Register", "Basic Reporting", "Email Support", "Free After-Sales Service*"], "highlight": False},
+            {"title": "Yearly", "price": "₹3799", "period": "/yr", "subtitle": "Best for growing restaurants", "features": ["5 Registers", "Advanced Analytics", "Priority 24/7 Support", "Inventory Management", "Free After-Sales Service*"], "highlight": True},
+            {"title": "3 Years", "price": "₹5999", "period": "/3yrs", "subtitle": "For multi-chain giants", "features": ["Unlimited Registers", "Custom Integrations", "Dedicated Account Manager", "White-label Options", "Free After-Sales Service*"], "highlight": False}
+        ]
+        
+        if db:
+            try:
+                conf_doc = db.collection('app_config').document('pricing_settings').get()
+                if conf_doc and conf_doc.exists:
+                    d = conf_doc.to_dict()
+                    trial_text = d.get('trial_text', trial_text) or trial_text
+                    wa_text = d.get('whatsapp_text', wa_text) or wa_text
+                    wa_url = d.get('whatsapp_url', wa_url) or wa_url
+                    
+                    fetched_plans = d.get('plans', [])
+                    if fetched_plans:
+                        plans_data = []
+                        for fp in fetched_plans:
+                            feat_str = fp.get('features', '')
+                            feats = [f.strip() for f in feat_str.split(',') if f.strip()]
+                            plans_data.append({
+                                "title": fp.get('title', ''),
+                                "price": fp.get('price', ''),
+                                "period": fp.get('period', ''),
+                                "subtitle": fp.get('subtitle', ''),
+                                "features": feats,
+                                "highlight": fp.get('highlight', False)
+                            })
+            except Exception as e:
+                print("Failed to fetch dynamic pricing:", e)
+                
+        for p in plans_data:
+            c = self.create_pricing_card(p["title"], p["price"], p["period"], p["subtitle"], p["features"], p["highlight"])
+            cards_layout.addWidget(c)
+        
+        bg_layout.addLayout(cards_layout)
+        
+        bg_layout.addSpacing(30)
+        trial_lbl = QLabel(trial_text)
+        trial_lbl.setStyleSheet("color: rgba(255,255,255,0.8); font-size: 12pt; background: transparent;")
+        trial_lbl.setAlignment(Qt.AlignCenter)
+        bg_layout.addWidget(trial_lbl)
+        
+        wa_layout = QHBoxLayout()
+        wa_layout.setAlignment(Qt.AlignCenter)
+        wa_btn = QPushButton(wa_text)
+        wa_btn.setCursor(Qt.PointingHandCursor)
+        wa_btn.setStyleSheet("""
+            QPushButton {
+                background: rgba(37, 211, 102, 0.2);
+                border: 1px solid #25D366;
+                color: white;
+                padding: 12px 25px;
+                border-radius: 20px;
+                font-size: 14pt;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #25D366;
+            }
+        """)
+        wa_btn.clicked.connect(lambda: webbrowser.open(wa_url))
+        wa_layout.addWidget(wa_btn)
+        bg_layout.addLayout(wa_layout)
+        
+        bg_layout.addStretch()
+        
+        main_layout.addWidget(self.bg)
+        
+    def create_pricing_card(self, title, price, period, subtitle, features, highlight=False):
+        card = AnimatedBorderCard()
+        card.setFixedSize(350, 580)
+        
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(30, 40, 30, 40)
+        
+        lbl_title = QLabel(title)
+        lbl_title.setStyleSheet(f"color: {'#00D26A' if highlight else 'white'}; font-size: 20pt; font-weight: bold; border: none; background: transparent;")
+        lbl_title.setAlignment(Qt.AlignCenter)
+        card_layout.addWidget(lbl_title)
+        
+        lbl_price = QLabel(f"{price}<span style='font-size:12pt; color:#aaa;'>{period}</span>")
+        lbl_price.setStyleSheet("color: white; font-size: 36pt; font-weight: 800; border: none; background: transparent; margin-top: 10px;")
+        lbl_price.setAlignment(Qt.AlignCenter)
+        card_layout.addWidget(lbl_price)
+        
+        lbl_sub = QLabel(subtitle)
+        lbl_sub.setStyleSheet("color: rgba(255,255,255,0.6); font-size: 11pt; border: none; background: transparent; margin-bottom: 20px;")
+        lbl_sub.setAlignment(Qt.AlignCenter)
+        card_layout.addWidget(lbl_sub)
+        
+        for feat in features:
+            feat_lbl = QLabel(f"✓ {feat}")
+            feat_lbl.setStyleSheet("color: white; font-size: 12pt; border: none; background: transparent; padding: 5px 0;")
+            card_layout.addWidget(feat_lbl)
+            
+        card_layout.addStretch()
+        
+        btn = QPushButton("Get Started")
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {'qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #00D26A, stop:1 #00b85c)' if highlight else 'rgba(255,255,255,0.1)'};
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                font-size: 14pt;
+                font-weight: bold;
+                border: {'none' if highlight else '1px solid rgba(255,255,255,0.2)'};
+            }}
+            QPushButton:hover {{
+                background: {'#00a04f' if highlight else 'rgba(255,255,255,0.2)'};
+            }}
+        """)
+        card_layout.addWidget(btn)
+        
+        return card
 
 
 
@@ -5533,6 +5816,34 @@ class QuickKOTDialog(QDialog):
         # Add Q Shortcut for Category
         QShortcut(QKeySequence("Q"), self).activated.connect(self.focus_category)
         
+        self.product_search_bar.installEventFilter(self)
+        self.product_list.installEventFilter(self)
+        
+    def eventFilter(self, source, event):
+        if event.type() == QEvent.KeyPress:
+            if source is self.product_search_bar:
+                if event.key() == Qt.Key_Down:
+                    self.product_list.setFocus()
+                    if self.product_list.count() > 0 and self.product_list.currentRow() < 0:
+                        self.product_list.setCurrentRow(0)
+                    return True
+                elif event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                    if self.product_list.count() > 0:
+                        if self.product_list.currentRow() < 0:
+                            self.product_list.setCurrentRow(0)
+                        self.add_selected_item()
+                    return True
+            elif source is self.product_list:
+                if event.key() == Qt.Key_Up and self.product_list.currentRow() <= 0:
+                    self.product_search_bar.setFocus()
+                    return True
+                elif event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                    self.add_selected_item()
+                    self.product_search_bar.setFocus()
+                    self.product_search_bar.selectAll()
+                    return True
+        return super().eventFilter(source, event)
+        
     def focus_category(self):
         focus_widget = QApplication.instance().focusWidget()
         if focus_widget and isinstance(focus_widget, (QLineEdit, QTextEdit)):
@@ -5598,16 +5909,18 @@ class QuickKOTDialog(QDialog):
         
         btn_minus = QPushButton("-")
         btn_minus.setFixedSize(25, 25)
-        btn_minus.setStyleSheet("background: #ffc107; font-weight: bold; font-size: 16px; margin: 2px;")
+        btn_minus.setStyleSheet("background: #ffc107; color: black; font-weight: bold; font-size: 16px; margin: 2px; border-radius: 4px;")
+        btn_minus.setFocusPolicy(Qt.NoFocus)
         
         lbl_qty = QLabel(str(qty))
         lbl_qty.setAlignment(Qt.AlignCenter)
-        lbl_qty.setFixedWidth(20)
+        lbl_qty.setFixedWidth(30)
         lbl_qty.setStyleSheet("font-weight: bold; font-size: 14px;")
         
         btn_plus = QPushButton("+")
         btn_plus.setFixedSize(25, 25)
-        btn_plus.setStyleSheet("background: #28a745; color: white; font-weight: bold; font-size: 16px; margin: 2px;")
+        btn_plus.setStyleSheet("background: #28a745; color: white; font-weight: bold; font-size: 16px; margin: 2px; border-radius: 4px;")
+        btn_plus.setFocusPolicy(Qt.NoFocus)
         
         qty_layout.addWidget(btn_minus)
         qty_layout.addWidget(lbl_qty)
@@ -5620,13 +5933,22 @@ class QuickKOTDialog(QDialog):
         action_layout = QHBoxLayout(action_widget)
         action_layout.setContentsMargins(0, 0, 0, 0)
         btn_delete = QPushButton("🗑️")
-        btn_delete.setStyleSheet("background: #dc3545; color: white; border: none; padding: 5px; margin: 2px;")
+        btn_delete.setStyleSheet("background: #dc3545; color: white; border: none; padding: 5px; margin: 2px; border-radius: 4px;")
+        btn_delete.setFocusPolicy(Qt.NoFocus)
         action_layout.addWidget(btn_delete)
         self.items_table.setCellWidget(row, 2, action_widget)
         
         # Connections
-        btn_plus.clicked.connect(lambda _, l=lbl_qty: l.setText(str(int(l.text()) + 1)))
-        btn_minus.clicked.connect(lambda _, l=lbl_qty, r=row: self.decrease_qty(l, r))
+        def inc():
+            lbl_qty.setText(str(int(lbl_qty.text()) + 1))
+            
+        def dec():
+            q = int(lbl_qty.text())
+            if q > 1:
+                lbl_qty.setText(str(q - 1))
+                
+        btn_plus.clicked.connect(inc)
+        btn_minus.clicked.connect(dec)
         btn_delete.clicked.connect(lambda _, b=btn_delete: self.delete_row(b))
         
     def decrease_qty(self, lbl, row):
