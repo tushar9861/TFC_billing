@@ -2473,8 +2473,7 @@ class SalesAnalyticsDialog(QDialog):
     def __init__(self, conn, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Sales Analytics")
-        screen = QApplication.primaryScreen().geometry()
-        self.setGeometry(100, 100, int(screen.width() * 0.9), int(screen.height() * 0.9)) # Adjusted size for one chart
+        self.showMaximized()
         self.setStyleSheet("""
             QDialog { background: #f7f7f7; }
             QLabel { font-size: 12pt; color: #333; }
@@ -2632,20 +2631,22 @@ class SalesAnalyticsDialog(QDialog):
             mask = (df['dt'] >= start_date) & (df['dt'] <= end_date + " 23:59:59")
             df_filtered = df.loc[mask]
             
-            self.ax.clear()
+            self.fig.clear()
+            self.ax = self.fig.add_subplot(111)
             aggregation_level = self.aggregation_filter.currentText()
 
+            line = None
             if df_filtered.empty:
                 self.ax.text(0.5, 0.5, 'No sales data for this period.', horizontalalignment='center', verticalalignment='center', transform=self.ax.transAxes)
             elif "Today" in aggregation_level:
                 hourly_sales = df_filtered.groupby(df_filtered['dt'].dt.hour)['total'].sum()
                 hourly_sales = hourly_sales.reindex(range(24), fill_value=0)
-                hourly_sales.index = [f"{h:02d}:00" for h in range(24)]
-                hourly_sales.plot(kind='line', ax=self.ax, marker='o', color='#007bff', linewidth=2.5, markersize=8, markerfacecolor='white', markeredgewidth=2)
+                labels = [f"{h:02d}:00" for h in range(24)]
+                line, = self.ax.plot(range(24), hourly_sales.values, marker='o', color='#007bff', linewidth=2.5, markersize=8, markerfacecolor='white', markeredgewidth=2)
                 self.ax.set_title("Hourly Sales Trend (Today)")
                 self.ax.set_xlabel("Hour of Day")
-                self.ax.set_xticks(range(len(hourly_sales)))
-                self.ax.set_xticklabels(hourly_sales.index, rotation=45)
+                self.ax.set_xticks(range(24))
+                self.ax.set_xticklabels(labels, rotation=45)
             elif "Month" in aggregation_level or "Custom" in aggregation_level:
                 days_diff = (pd.to_datetime(end_date) - pd.to_datetime(start_date)).days
                 if days_diff > 90:
@@ -2653,24 +2654,49 @@ class SalesAnalyticsDialog(QDialog):
                     monthly_sales = df_filtered.groupby(df_filtered['dt'].dt.to_period('M'))['total'].sum()
                     monthly_sales.index = monthly_sales.index.to_timestamp()
                     monthly_sales = monthly_sales.reindex(all_months, fill_value=0)
-                    monthly_sales.plot(kind='line', ax=self.ax, marker='o', color='#007bff', linewidth=2.5, markersize=8, markerfacecolor='white', markeredgewidth=2)
+                    line, = self.ax.plot(monthly_sales.index, monthly_sales.values, marker='o', color='#007bff', linewidth=2.5, markersize=8, markerfacecolor='white', markeredgewidth=2)
                     self.ax.set_title("Monthly Sales Trend")
                     self.ax.set_xlabel("Month")
-                    self.ax.xaxis.set_major_formatter(plt.FixedFormatter(monthly_sales.index.strftime('%b %Y')))
+                    self.fig.autofmt_xdate()
                 else:
                     daily_sales = df_filtered.groupby(df_filtered['dt'].dt.date)['total'].sum()
                     daily_sales = daily_sales.reindex(pd.date_range(start=start_date, end=end_date, freq='D'), fill_value=0)
-                    daily_sales.plot(kind='line', ax=self.ax, marker='o', color='#007bff', linewidth=2.5, markersize=8, markerfacecolor='white', markeredgewidth=2)
+                    line, = self.ax.plot(daily_sales.index, daily_sales.values, marker='o', color='#007bff', linewidth=2.5, markersize=8, markerfacecolor='white', markeredgewidth=2)
                     self.ax.set_title("Daily Sales Trend")
                     self.ax.set_xlabel("Date")
+                    self.fig.autofmt_xdate()
+
+            # Add Hover Annotations
+            if line:
+                annot = self.ax.annotate("", xy=(0,0), xytext=(-20,20), textcoords="offset points",
+                                         bbox=dict(boxstyle="round4,pad=0.5", fc="white", ec="#007bff", lw=2),
+                                         arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=0.1"))
+                annot.set_visible(False)
+                
+                def hover(event):
+                    if event.inaxes == self.ax:
+                        cont, ind = line.contains(event)
+                        if cont:
+                            pos = line.get_xydata()[ind["ind"][0]]
+                            annot.xy = pos
+                            annot.set_text(f"₹{pos[1]:.2f}")
+                            annot.set_visible(True)
+                            self.canvas.draw_idle()
+                        else:
+                            if annot.get_visible():
+                                annot.set_visible(False)
+                                self.canvas.draw_idle()
+                                
+                if hasattr(self, "hover_cid"):
+                    self.canvas.mpl_disconnect(self.hover_cid)
+                self.hover_cid = self.canvas.mpl_connect("motion_notify_event", hover)
 
             self.ax.set_ylabel("Sales (₹)", color='#444444', fontweight='bold', fontsize=11)
             self.ax.set_xlabel(self.ax.get_xlabel(), color='#444444', fontweight='bold', fontsize=11)
             self.ax.set_title(self.ax.get_title(), color='#222222', fontweight='bold', fontsize=14, pad=15)
             
             # Premium Styling
-            self.ax.grid(True, axis='y', linestyle='-', alpha=0.15, color='black')
-            self.ax.grid(False, axis='x')
+            self.ax.grid(True, linestyle='--', alpha=0.5, color='gray')
             self.ax.tick_params(axis='x', rotation=45, colors='#555555')
             self.ax.tick_params(axis='y', colors='#555555')
             
