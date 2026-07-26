@@ -365,6 +365,39 @@ class ModernLoginScreen(QDialog):
         left_layout.setContentsMargins(60, 60, 60, 60)
         left_layout.setSpacing(10)
 
+        # ── Brand Wordmark ──
+        brand_lbl = QLabel()
+        brand_lbl.setTextFormat(Qt.RichText)
+        brand_lbl.setText(
+            "<span style='"
+            "font-family: Segoe UI, Inter, Arial, sans-serif;"
+            "font-size: 46pt;"
+            "font-weight: 900;"
+            "letter-spacing: 4px;"
+            "background: transparent;"
+            "'>"
+            "<span style='color: #ffffff;'>Bling</span>"
+            "<span style='color: #00D26A;'>Xen</span>"
+            "</span>"
+        )
+        brand_lbl.setStyleSheet("background: transparent; border: none;")
+        brand_lbl.setAlignment(Qt.AlignLeft)
+        left_layout.addWidget(brand_lbl)
+
+        tagline_lbl = QLabel("Smart Billing. Smarter Business.")
+        tagline_lbl.setStyleSheet(
+            "color: rgba(0, 210, 106, 0.75); font-size: 13pt; font-weight: 600; "
+            "background: transparent; border: none; letter-spacing: 1px;"
+        )
+        tagline_lbl.setAlignment(Qt.AlignLeft)
+        left_layout.addWidget(tagline_lbl)
+
+        # Thin accent separator line
+        sep = QFrame()
+        sep.setFrameShape(QFrame.HLine)
+        sep.setStyleSheet("background: rgba(0, 210, 106, 0.3); border: none; max-height: 1px; margin-top: 6px; margin-bottom: 6px;")
+        left_layout.addWidget(sep)
+
         subtitle = QLabel(get_daily_quote())
         subtitle.setStyleSheet("color: rgba(255,255,255,0.7); font-size: 14pt; border: none; background: transparent; margin-top: 5px; font-style: italic;")
         left_layout.addWidget(subtitle)
