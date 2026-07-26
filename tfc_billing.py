@@ -8292,7 +8292,8 @@ class MasterDataDialog(QDialog):
         self.setAttribute(Qt.WA_TranslucentBackground)
         
         screen = QApplication.primaryScreen().geometry()
-        w, h = int(screen.width() * 0.75), int(screen.height() * 0.75)
+        # Make it slightly wider for the sidebar layout
+        w, h = int(screen.width() * 0.85), int(screen.height() * 0.8)
         self.setGeometry((screen.width() - w) // 2, (screen.height() - h) // 2, w, h)
         
         self.init_ui()
@@ -8319,29 +8320,34 @@ class MasterDataDialog(QDialog):
         bg_frame.setGraphicsEffect(shadow)
         
         frame_layout = QVBoxLayout(bg_frame)
-        frame_layout.setContentsMargins(30, 30, 30, 30)
-        frame_layout.setSpacing(20)
+        frame_layout.setContentsMargins(0, 0, 0, 0)
+        frame_layout.setSpacing(0)
         
         # Header
-        header_layout = QHBoxLayout()
+        header_widget = QWidget()
+        header_widget.setStyleSheet("background-color: white; border-top-left-radius: 12px; border-top-right-radius: 12px; border-bottom: 1px solid #dee2e6;")
+        header_layout = QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(30, 20, 30, 20)
+        
         title = QLabel("🛠️ Master Data Hub")
-        title.setStyleSheet("color: #212529; font-size: 26pt; font-weight: 800; font-family: 'Segoe UI', Arial, sans-serif;")
+        title.setStyleSheet("color: #212529; font-size: 22pt; font-weight: 800; border: none;")
         
         btn_close = QPushButton("✕ Close")
         btn_close.setCursor(Qt.PointingHandCursor)
         btn_close.setStyleSheet("""
             QPushButton { 
-                background-color: transparent; 
-                color: #6c757d; 
-                font-size: 14pt; 
+                background-color: #f8f9fa; 
+                color: #dc3545; 
+                font-size: 13pt; 
                 font-weight: bold; 
-                border: none;
-                padding: 5px 15px;
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                padding: 8px 15px;
             }
             QPushButton:hover { 
-                color: #dc3545; 
-                background-color: #f8d7da;
-                border-radius: 6px;
+                color: white; 
+                background-color: #dc3545;
+                border-color: #dc3545;
             }
         """)
         btn_close.clicked.connect(self.close)
@@ -8349,65 +8355,89 @@ class MasterDataDialog(QDialog):
         header_layout.addWidget(title)
         header_layout.addStretch()
         header_layout.addWidget(btn_close)
-        frame_layout.addLayout(header_layout)
+        frame_layout.addWidget(header_widget)
         
-        # Separator Line
-        line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        line.setStyleSheet("background-color: #dee2e6;")
-        frame_layout.addWidget(line)
+        # Split Layout: Sidebar and Content
+        split_widget = QWidget()
+        split_layout = QHBoxLayout(split_widget)
+        split_layout.setContentsMargins(0, 0, 0, 0)
+        split_layout.setSpacing(0)
         
-        # Tabs styling (Clean, scaling-safe)
-        self.tabs = QTabWidget()
-        self.tabs.setStyleSheet("""
-            QTabWidget::pane { 
-                border: 1px solid #ced4da; 
-                background: white; 
-                border-radius: 8px;
+        # Left Sidebar (QListWidget)
+        self.sidebar = QListWidget()
+        self.sidebar.setFixedWidth(260)
+        self.sidebar.setFocusPolicy(Qt.NoFocus)
+        self.sidebar.setStyleSheet("""
+            QListWidget {
+                background-color: #f8f9fa;
+                border: none;
+                border-right: 1px solid #dee2e6;
+                border-bottom-left-radius: 12px;
+                outline: none;
+                padding-top: 15px;
             }
-            QTabBar::tab {
-                background: transparent; 
-                color: #6c757d; 
-                font-size: 11pt; 
+            QListWidget::item {
+                font-size: 14pt;
                 font-weight: 600;
-                padding: 10px 18px;
-                margin-right: 4px;
-                border-bottom: 3px solid transparent;
+                color: #495057;
+                padding: 15px 25px;
+                border-left: 4px solid transparent;
             }
-            QTabBar::tab:selected { 
-                color: #0d6efd; 
-                border-bottom: 3px solid #0d6efd;
+            QListWidget::item:hover {
+                background-color: #e9ecef;
+                color: #212529;
             }
-            QTabBar::tab:hover:!selected { 
-                color: #495057; 
+            QListWidget::item:selected {
+                background-color: white;
+                color: #0d6efd;
+                border-left: 4px solid #0d6efd;
+                font-weight: bold;
             }
         """)
         
-        self.tabs.addTab(self.create_master_tab("units", "name", "Measurement Units", "⚖️"), " Units ")
-        self.tabs.addTab(self.create_master_tab("categories", "name", "Categories", "📦"), " Categories ")
-        self.tabs.addTab(self.create_master_tab("tax_rates", "rate", "Tax Rates (%)", "💰"), " Tax Rates ")
-        self.tabs.addTab(self.create_master_tab("master_modifiers", "name", "Modifiers/Add-ons", "🍔"), " Modifiers ")
-        self.tabs.addTab(self.create_master_tab("master_order_types", "name", "Order Types", "🏷️"), " Order Types ")
-        self.tabs.addTab(self.create_master_tab("master_kitchen_stations", "name", "Kitchen Stations", "🍳"), " Kitchen ")
-        self.tabs.addTab(self.create_master_tab("master_payment_channels", "name", "Payment Channels", "💳"), " Payments ")
-        self.tabs.addTab(self.create_ingredients_tab(), "🧅 Ingredients")
+        # Right Content (QStackedWidget)
+        self.content_stack = QStackedWidget()
+        self.content_stack.setStyleSheet("""
+            QStackedWidget {
+                background-color: white;
+                border-bottom-right-radius: 12px;
+            }
+        """)
         
-        frame_layout.addWidget(self.tabs)
+        # Connect Sidebar to StackedWidget
+        self.sidebar.currentRowChanged.connect(self.content_stack.setCurrentIndex)
+        
+        # Add Tabs (Now List Items and Stack Pages)
+        self.add_master_category("⚖️ Measurement Units", self.create_master_tab("units", "name", "Measurement Unit", "⚖️"))
+        self.add_master_category("📦 Categories", self.create_master_tab("categories", "name", "Category", "📦"))
+        self.add_master_category("💰 Tax Rates (%)", self.create_master_tab("tax_rates", "rate", "Tax Rate (%)", "💰"))
+        self.add_master_category("🍔 Modifiers/Add-ons", self.create_master_tab("master_modifiers", "name", "Modifier", "🍔"))
+        self.add_master_category("🏷️ Order Types", self.create_master_tab("master_order_types", "name", "Order Type", "🏷️"))
+        self.add_master_category("🍳 Kitchen Stations", self.create_master_tab("master_kitchen_stations", "name", "Kitchen Station", "🍳"))
+        self.add_master_category("💳 Payment Channels", self.create_master_tab("master_payment_channels", "name", "Payment Channel", "💳"))
+        self.add_master_category("🧅 Ingredients", self.create_ingredients_tab())
+        
+        # Set default selection
+        self.sidebar.setCurrentRow(0)
+        
+        split_layout.addWidget(self.sidebar)
+        split_layout.addWidget(self.content_stack)
+        
+        frame_layout.addWidget(split_widget)
         main_layout.addWidget(bg_frame)
         
         # Keyboard Shortcuts
         QShortcut(QKeySequence("Esc"), self).activated.connect(self.close)
-        
-        shortcut_next_tab = QShortcut(QKeySequence("Ctrl+Tab"), self)
-        shortcut_next_tab.activated.connect(lambda: self.tabs.setCurrentIndex((self.tabs.currentIndex() + 1) % self.tabs.count()))
-        
-        shortcut_prev_tab = QShortcut(QKeySequence("Ctrl+Shift+Tab"), self)
-        shortcut_prev_tab.activated.connect(lambda: self.tabs.setCurrentIndex((self.tabs.currentIndex() - 1) % self.tabs.count()))
+
+    def add_master_category(self, title, widget):
+        item = QListWidgetItem(title)
+        self.sidebar.addItem(item)
+        self.content_stack.addWidget(widget)
 
     def create_master_tab(self, table_name, col_name, title, icon):
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setContentsMargins(30, 30, 30, 30)
         layout.setSpacing(20)
         
         add_layout = QHBoxLayout()
@@ -8415,10 +8445,10 @@ class MasterDataDialog(QDialog):
         txt_input.setPlaceholderText(f"{icon}  Add New {title}... (Press Enter)")
         txt_input.setStyleSheet("""
             QLineEdit {
-                background: white; color: #212529; font-size: 14pt; padding: 12px 15px;
+                background: #f8f9fa; color: #212529; font-size: 14pt; padding: 12px 15px;
                 border: 1px solid #ced4da; border-radius: 8px;
             }
-            QLineEdit:focus { border: 2px solid #0d6efd; outline: none; }
+            QLineEdit:focus { background: white; border: 2px solid #0d6efd; outline: none; }
         """)
         
         btn_add = QPushButton("Add Record")
@@ -8525,7 +8555,7 @@ class MasterDataDialog(QDialog):
     def create_ingredients_tab(self):
         w = QWidget()
         layout = QVBoxLayout(w)
-        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setContentsMargins(30, 30, 30, 30)
         layout.setSpacing(20)
         
         form_layout = QHBoxLayout()
@@ -8548,10 +8578,10 @@ class MasterDataDialog(QDialog):
         for w_input in [self.ing_name_input, self.ing_cost_input, self.ing_unit_input]:
             w_input.setStyleSheet("""
                 QLineEdit, QComboBox {
-                    background: white; color: #212529; font-size: 14pt; padding: 12px 15px;
+                    background: #f8f9fa; color: #212529; font-size: 14pt; padding: 12px 15px;
                     border: 1px solid #ced4da; border-radius: 8px;
                 }
-                QLineEdit:focus, QComboBox:focus { border: 2px solid #0d6efd; outline: none; }
+                QLineEdit:focus, QComboBox:focus { background: white; border: 2px solid #0d6efd; outline: none; }
                 QComboBox::drop-down { border: none; width: 30px; }
             """)
         
