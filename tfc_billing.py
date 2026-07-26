@@ -8428,7 +8428,6 @@ class MasterDataDialog(QDialog):
         self.add_master_category("💰 Tax Rates (%)", self.create_master_tab("tax_rates", "rate", "Tax Rate (%)", "💰"))
         self.add_master_category("🍔 Modifiers/Add-ons", self.create_master_tab("master_modifiers", "name", "Modifier", "🍔"))
         self.add_master_category("🏷️ Order Types", self.create_master_tab("master_order_types", "name", "Order Type", "🏷️"))
-        self.add_master_category("🍳 Kitchen Stations", self.create_master_tab("master_kitchen_stations", "name", "Kitchen Station", "🍳"))
         self.add_master_category("💳 Payment Channels", self.create_master_tab("master_payment_channels", "name", "Payment Channel", "💳"))
         self.add_master_category("🧅 Ingredients", self.create_ingredients_tab())
         
