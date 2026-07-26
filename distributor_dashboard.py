@@ -5,9 +5,12 @@ import string
 import datetime
 import sqlite3
 import json
+import folium
+import tempfile
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
+from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 
 try:
     from firestore_rest import firestore as db
@@ -48,6 +51,29 @@ class DataFetcherThread(QThread):
                     lic_data = [d.to_dict() for d in licenses]
                     shop_data = [d.to_dict() for d in shops]
 
+                    all_bills = []
+                    all_refunds = []
+                    
+                    for s in shop_data:
+                        sid = s.get('shop_id')
+                        if sid:
+                            try:
+                                b_docs = list(db.collection(f"shops/{sid}/bills").stream())
+                                for bd in b_docs:
+                                    bdict = bd.to_dict()
+                                    bdict['shop_id'] = sid
+                                    bdict['shop_name'] = s.get('shop_name', 'Unknown')
+                                    all_bills.append(bdict)
+                            except: pass
+                            
+                            try:
+                                r_docs = list(db.collection(f"shops/{sid}/refunds").stream())
+                                for rd in r_docs:
+                                    rdict = rd.to_dict()
+                                    rdict['shop_id'] = sid
+                                    all_refunds.append(rdict)
+                            except: pass
+
                     # Build distributor map from license keys (distributor_id field)
                     distributor_ids = set()
                     for lic in lic_data:
@@ -71,6 +97,8 @@ class DataFetcherThread(QThread):
                         'distributor_ids': list(distributor_ids),
                         'distributor_shops': distributor_shops,
                         'direct_shops': direct_shops,
+                        'all_bills': all_bills,
+                        'all_refunds': all_refunds
                     })
             except Exception as e:
                 self.error_occurred.emit(str(e))
@@ -218,7 +246,11 @@ class SQLTerminal(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._query_library = list(PRESET_QUERIES)
+        self._all_data = {}
         self._build_ui()
+        
+    def set_data(self, data):
+        self._all_data = data
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -337,6 +369,36 @@ class SQLTerminal(QWidget):
             license_key TEXT, email_intended TEXT, is_used INTEGER, used_by_shop TEXT, claimed_at TEXT, used_at TEXT, created_at TEXT)""")
         conn.execute("""CREATE TABLE IF NOT EXISTS global_refunds (
             id TEXT, shop_id TEXT, amount REAL, created_at TEXT)""")
+
+        # Insert live data
+        c = conn.cursor()
+        for b in self._all_data.get('all_bills', []):
+            try:
+                c.execute("INSERT INTO global_bills (id, shop_id, shop_name, total_amount, created_at) VALUES (?,?,?,?,?)",
+                          (b.get('id',''), b.get('shop_id',''), b.get('shop_name',''), b.get('total_amount', 0.0), b.get('created_at','')))
+                for item in b.get('items', []):
+                    c.execute("INSERT INTO global_bill_items (id, shop_id, item_name, quantity, price, created_at) VALUES (?,?,?,?,?,?)",
+                              (item.get('id',''), b.get('shop_id',''), item.get('name',''), item.get('qty',0), item.get('price',0), b.get('created_at','')))
+            except: pass
+            
+        for s in self._all_data.get('shops', []):
+            try:
+                c.execute("INSERT INTO registered_shops (shop_id, shop_name, city, region, created_at) VALUES (?,?,?,?,?)",
+                          (s.get('shop_id',''), s.get('shop_name',''), s.get('city',''), s.get('region',''), s.get('created_at','')))
+            except: pass
+            
+        for l in self._all_data.get('licenses', []):
+            try:
+                c.execute("INSERT INTO license_keys (license_key, email_intended, is_used, used_by_shop, claimed_at, used_at, created_at) VALUES (?,?,?,?,?,?,?)",
+                          (l.get('id',''), l.get('email_intended',''), 1 if l.get('is_used') else 0, l.get('used_by_shop',''), l.get('claimed_at',''), l.get('used_at',''), l.get('created_at','')))
+            except: pass
+            
+        for r in self._all_data.get('all_refunds', []):
+            try:
+                c.execute("INSERT INTO global_refunds (id, shop_id, amount, created_at) VALUES (?,?,?,?)",
+                          (r.get('id',''), r.get('shop_id',''), r.get('amount', 0.0), r.get('created_at','')))
+            except: pass
+
         conn.commit()
 
 # ─────────────────────────────────────────────
@@ -380,6 +442,358 @@ class KPICard(QFrame):
 # ─────────────────────────────────────────────
 #  MAIN DASHBOARD
 # ─────────────────────────────────────────────
+class MapWebPage(QWebEnginePage):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        
+    def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
+        if message.startswith("SHOP_CLICKED:"):
+            shop_id = message.replace("SHOP_CLICKED:", "").strip()
+            # parent() is map_view, parent().parent() might be the stack widget, so we should just call a custom callback
+            if hasattr(self, 'click_callback') and self.click_callback:
+                self.click_callback(shop_id)
+        else:
+            super().javaScriptConsoleMessage(level, message, lineNumber, sourceID)
+
+class ShopQuickViewModal(QDialog):
+    def __init__(self, shop_data, parent=None):
+        super().__init__(parent)
+        self.shop_id = shop_data.get('shop_id', '')
+        self.setWindowTitle(f"Shop Quick View - {shop_data.get('shop_name', 'Unknown')}")
+        self.setFixedSize(400, 300)
+        self.setStyleSheet("""
+            QDialog { background-color: #0d1117; color: white; border-radius: 10px; border: 2px solid #238636; }
+            QLabel { color: white; font-size: 14pt; }
+            QPushButton { background-color: #238636; color: white; border-radius: 5px; padding: 10px; font-weight: bold; }
+            QPushButton:hover { background-color: #2ea043; }
+            QPushButton#closeBtn { background-color: #da3633; }
+            QPushButton#closeBtn:hover { background-color: #f85149; }
+        """)
+        
+        layout = QVBoxLayout(self)
+        
+        header = QLabel(f"🏢 {shop_data.get('shop_name', 'Unknown')}")
+        header.setStyleSheet("font-size: 20pt; font-weight: bold; color: #58a6ff;")
+        layout.addWidget(header)
+        
+        layout.addWidget(QLabel(f"📍 Region: {shop_data.get('region', 'N/A')}"))
+        layout.addWidget(QLabel(f"🏙️ City: {shop_data.get('city', 'N/A')}"))
+        created = shop_data.get('created_at', '')[:10] if shop_data.get('created_at') else 'N/A'
+        layout.addWidget(QLabel(f"📅 Registered: {created}"))
+        
+        layout.addStretch()
+        
+        btn_layout = QHBoxLayout()
+        self.btn_expand = QPushButton("🔍 Expand Details")
+        self.btn_close = QPushButton("❌ Close")
+        self.btn_close.setObjectName("closeBtn")
+        
+        btn_layout.addWidget(self.btn_expand)
+        btn_layout.addWidget(self.btn_close)
+        
+        layout.addLayout(btn_layout)
+        
+        self.btn_close.clicked.connect(self.reject)
+        self.btn_expand.clicked.connect(self.accept)
+
+class ShopDetailModal(QDialog):
+    def __init__(self, shop_data, all_data, parent=None):
+        super().__init__(parent)
+        self.shop_id = shop_data.get('shop_id', '')
+        self.shop_data = shop_data
+        self.all_data = all_data
+        
+        self.raw_activities = []
+        self.raw_items = []
+        
+        self.setWindowTitle(f"Shop Details - {shop_data.get('shop_name', 'Unknown')}")
+        self.setMinimumSize(1000, 800)
+        self.setStyleSheet("""
+            QDialog { background-color: #0d1117; color: white; border-radius: 10px; border: 2px solid #58a6ff; }
+            QLabel { color: white; font-size: 11pt; }
+            QTableWidget { background-color: #161b22; color: white; gridline-color: #30363d; border: 1px solid #30363d; border-radius: 4px; }
+            QHeaderView::section { background-color: #21262d; color: white; padding: 6px; border: 1px solid #30363d; font-weight: bold; }
+            QTableWidget::item { padding: 6px; }
+            QPushButton { background-color: #da3633; color: white; border-radius: 5px; padding: 10px 20px; font-weight: bold; font-size: 12pt; }
+            QPushButton:hover { background-color: #f85149; }
+            QPushButton#btnFilter { background-color: #238636; }
+            QPushButton#btnFilter:hover { background-color: #2ea043; }
+            QGroupBox { border: 1px solid #30363d; border-radius: 6px; margin-top: 10px; font-weight: bold; color: #8b949e; }
+            QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }
+            QComboBox, QDateEdit { background: #161b22; color: white; border: 1px solid #30363d; border-radius: 4px; padding: 4px; }
+        """)
+        
+        # Load raw data
+        self._load_data()
+        
+        layout = QVBoxLayout(self)
+        
+        # --- HEADER ---
+        header_layout = QHBoxLayout()
+        name_lbl = QLabel(f"🏢 {shop_data.get('shop_name', 'Unknown')}")
+        name_lbl.setStyleSheet("font-size: 24pt; font-weight: bold; color: #58a6ff;")
+        name_lbl.setWordWrap(True)
+        header_layout.addWidget(name_lbl, stretch=1)
+        
+        pkg_lbl = QLabel(f"Package: {shop_data.get('package_type', 'Basic').upper()}")
+        pkg_lbl.setStyleSheet("font-size: 14pt; font-weight: bold; color: #e3b341; background: #2d2613; padding: 8px 15px; border-radius: 10px;")
+        pkg_lbl.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        header_layout.addWidget(pkg_lbl)
+        layout.addLayout(header_layout)
+        
+        # Sub-header
+        loc_str = f"📍 {shop_data.get('city', 'N/A')}, {shop_data.get('region', 'N/A')}"
+        addr_str = f"🏠 {shop_data.get('business_address', 'N/A')}"
+        created_str = f"📅 Registered: {shop_data.get('created_at', 'N/A')[:10]}"
+        
+        sub_layout = QHBoxLayout()
+        for s in [loc_str, addr_str, created_str]:
+            lbl = QLabel(s)
+            lbl.setWordWrap(True)
+            sub_layout.addWidget(lbl)
+        layout.addLayout(sub_layout)
+        
+        layout.addSpacing(15)
+        
+        # --- FILTERS ---
+        filter_group = QGroupBox("Filters")
+        filter_layout = QHBoxLayout(filter_group)
+        
+        filter_layout.addWidget(QLabel("Type:"))
+        self.combo_type = QComboBox()
+        self.combo_type.addItems(["All", "Sales", "Refunds"])
+        filter_layout.addWidget(self.combo_type)
+        
+        filter_layout.addSpacing(20)
+        
+        filter_layout.addWidget(QLabel("Start Date:"))
+        self.date_start = QDateEdit()
+        self.date_start.setCalendarPopup(True)
+        self.date_start.setDisplayFormat("yyyy-MM-dd")
+        if self.raw_activities:
+            # Set to oldest activity
+            oldest = min(self.raw_activities, key=lambda x: x['date'])['date'][:10]
+            self.date_start.setDate(QDate.fromString(oldest, "yyyy-MM-dd"))
+        else:
+            self.date_start.setDate(QDate.currentDate().addMonths(-1))
+        filter_layout.addWidget(self.date_start)
+        
+        filter_layout.addSpacing(20)
+        
+        filter_layout.addWidget(QLabel("End Date:"))
+        self.date_end = QDateEdit()
+        self.date_end.setCalendarPopup(True)
+        self.date_end.setDisplayFormat("yyyy-MM-dd")
+        self.date_end.setDate(QDate.currentDate().addDays(1)) # Include today
+        filter_layout.addWidget(self.date_end)
+        
+        filter_layout.addStretch()
+        
+        btn_apply = QPushButton("Apply Filters")
+        btn_apply.setObjectName("btnFilter")
+        btn_apply.clicked.connect(self._apply_filters)
+        filter_layout.addWidget(btn_apply)
+        
+        layout.addWidget(filter_group)
+        layout.addSpacing(15)
+        
+        # --- KPI CARDS ---
+        self.kpi_layout = QHBoxLayout()
+        
+        self.lbl_revenue_val = QLabel("₹0.00")
+        self.lbl_orders_val = QLabel("0")
+        self.lbl_refunds_val = QLabel("₹0.00")
+        
+        self.kpi_layout.addWidget(self._make_kpi_widget("Total Revenue", self.lbl_revenue_val, "#3fb950"))
+        self.kpi_layout.addWidget(self._make_kpi_widget("Total Orders", self.lbl_orders_val, "#58a6ff"))
+        self.kpi_layout.addWidget(self._make_kpi_widget("Total Refunds", self.lbl_refunds_val, "#f85149"))
+        layout.addLayout(self.kpi_layout)
+        
+        layout.addSpacing(15)
+        
+        # --- TABLES ---
+        tables_layout = QHBoxLayout()
+        
+        # Recent Activity Table
+        act_group = QGroupBox("Filtered Activity")
+        act_l = QVBoxLayout(act_group)
+        self.tbl_activity = QTableWidget()
+        self.tbl_activity.setColumnCount(4)
+        self.tbl_activity.setHorizontalHeaderLabels(["Date", "Type", "Amount", "Items"])
+        self.tbl_activity.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_activity.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.tbl_activity.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.tbl_activity.setSortingEnabled(True)
+        act_l.addWidget(self.tbl_activity)
+        tables_layout.addWidget(act_group, stretch=2)
+        
+        # Top Items Table
+        top_group = QGroupBox("Filtered Top Selling Items")
+        top_l = QVBoxLayout(top_group)
+        self.tbl_items = QTableWidget()
+        self.tbl_items.setColumnCount(2)
+        self.tbl_items.setHorizontalHeaderLabels(["Item Name", "Qty Sold"])
+        self.tbl_items.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.tbl_items.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.tbl_items.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.tbl_items.setSortingEnabled(True)
+        top_l.addWidget(self.tbl_items)
+        tables_layout.addWidget(top_group, stretch=1)
+        
+        layout.addLayout(tables_layout, stretch=1)
+        
+        # Close Button
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        self.btn_close = QPushButton("Close")
+        self.btn_close.clicked.connect(self.accept)
+        btn_layout.addWidget(self.btn_close)
+        layout.addLayout(btn_layout)
+        
+        self._apply_filters()
+        
+    def _make_kpi_widget(self, title, val_label, color):
+        w = QFrame()
+        w.setStyleSheet(f"background: #161b22; border: 1px solid {color}; border-radius: 8px;")
+        l = QVBoxLayout(w)
+        t_lbl = QLabel(title)
+        t_lbl.setStyleSheet("color: #8b949e; font-size: 14pt;")
+        t_lbl.setAlignment(Qt.AlignCenter)
+        val_label.setStyleSheet(f"color: {color}; font-size: 28pt; font-weight: bold;")
+        val_label.setAlignment(Qt.AlignCenter)
+        l.addWidget(t_lbl)
+        l.addWidget(val_label)
+        return w
+        
+    def _load_data(self):
+        # Gather all bills and refunds for this shop once
+        self.raw_activities = []
+        
+        # Filter bills
+        for b in self.all_data.get('all_bills', []):
+            if str(b.get('shop_id')) == str(self.shop_id):
+                try:
+                    amt = float(b.get('total_amount', 0))
+                except:
+                    amt = 0.0
+                dt = b.get('created_at', '')
+                items = b.get('items', [])
+                self.raw_activities.append({
+                    'date': dt,
+                    'type': 'Sale',
+                    'amount': amt,
+                    'items_count': len(items),
+                    'items': items
+                })
+                    
+        # Filter refunds
+        for r in self.all_data.get('all_refunds', []):
+            if str(r.get('shop_id')) == str(self.shop_id):
+                try:
+                    amt = float(r.get('amount', 0))
+                except:
+                    amt = 0.0
+                dt = r.get('created_at', '')
+                self.raw_activities.append({
+                    'date': dt,
+                    'type': 'Refund',
+                    'amount': amt,
+                    'items_count': 0,
+                    'items': []
+                })
+                
+    def _apply_filters(self):
+        f_type = self.combo_type.currentText()
+        f_start = self.date_start.date().toString("yyyy-MM-dd")
+        f_end = self.date_end.date().toString("yyyy-MM-dd")
+        
+        filtered_activities = []
+        item_counts = {}
+        
+        total_rev = 0.0
+        total_ref = 0.0
+        total_ord = 0
+        
+        for act in self.raw_activities:
+            act_date = act['date'][:10]
+            if act_date < f_start or act_date > f_end:
+                continue
+                
+            if f_type == "Sales" and act['type'] != 'Sale':
+                continue
+            if f_type == "Refunds" and act['type'] != 'Refund':
+                continue
+                
+            filtered_activities.append(act)
+            
+            if act['type'] == 'Sale':
+                total_rev += act['amount']
+                total_ord += 1
+                for it in act['items']:
+                    name = it.get('name', 'Unknown')
+                    try:
+                        qty = float(it.get('qty', 0))
+                    except:
+                        qty = 0
+                    item_counts[name] = item_counts.get(name, 0) + qty
+            else:
+                total_ref += act['amount']
+                
+        # Update KPIs
+        self.lbl_revenue_val.setText(f"₹{total_rev:,.2f}")
+        self.lbl_orders_val.setText(f"{total_ord}")
+        self.lbl_refunds_val.setText(f"₹{total_ref:,.2f}")
+        
+        # Populate Activity Table
+        self.tbl_activity.setSortingEnabled(False)
+        self.tbl_activity.setRowCount(0)
+        
+        # Sort descending
+        filtered_activities.sort(key=lambda x: x['date'], reverse=True)
+        
+        for act in filtered_activities:  # showing all matching (or limit if needed)
+            r = self.tbl_activity.rowCount()
+            self.tbl_activity.insertRow(r)
+            
+            date_item = QTableWidgetItem(act['date'][:16])
+            type_item = QTableWidgetItem(act['type'])
+            
+            amt_item = QTableWidgetItem()
+            amt_item.setData(Qt.DisplayRole, float(act['amount']))
+            
+            items_item = QTableWidgetItem()
+            items_item.setData(Qt.DisplayRole, int(act['items_count']))
+            
+            self.tbl_activity.setItem(r, 0, date_item)
+            self.tbl_activity.setItem(r, 1, type_item)
+            self.tbl_activity.setItem(r, 2, amt_item)
+            self.tbl_activity.setItem(r, 3, items_item)
+            
+            color = QColor("#f85149") if act['type'] == 'Refund' else QColor("#3fb950")
+            for c in range(4):
+                self.tbl_activity.item(r, c).setForeground(color)
+                
+        self.tbl_activity.setSortingEnabled(True)
+        self.tbl_activity.sortItems(0, Qt.DescendingOrder)
+        
+        # Populate Top Items Table
+        self.tbl_items.setSortingEnabled(False)
+        self.tbl_items.setRowCount(0)
+        for name, qty in item_counts.items():
+            r = self.tbl_items.rowCount()
+            self.tbl_items.insertRow(r)
+            self.tbl_items.setItem(r, 0, QTableWidgetItem(name))
+            
+            qty_item = QTableWidgetItem()
+            qty_item.setData(Qt.DisplayRole, float(qty))
+            self.tbl_items.setItem(r, 1, qty_item)
+            
+        self.tbl_items.setSortingEnabled(True)
+        self.tbl_items.sortItems(1, Qt.DescendingOrder)
+
+# ─────────────────────────────────────────────
+#  MAIN WINDOW
+# ─────────────────────────────────────────────
 class DistributorDashboard(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -409,6 +823,14 @@ class DistributorDashboard(QMainWindow):
         sb = QWidget()
         sb.setFixedWidth(260)
         sb.setStyleSheet("background-color: #0E1628; border-right: 1px solid #1e2a45;")
+        
+        # Add 3D Drop Shadow to the entire sidebar
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(20)
+        shadow.setColor(QColor(0, 0, 0, 150))
+        shadow.setOffset(5, 0)
+        sb.setGraphicsEffect(shadow)
+        
         sl = QVBoxLayout(sb)
         sl.setContentsMargins(0, 0, 0, 0)
         sl.setSpacing(0)
@@ -426,19 +848,30 @@ class DistributorDashboard(QMainWindow):
         sl.addWidget(logo_area)
 
         self.nav = QListWidget()
+        self.nav.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.nav.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.nav.setStyleSheet("""
             QListWidget { border: none; background: transparent; outline: none; padding: 8px 0; }
             QListWidget::item {
-                color: #9ca3af; padding: 16px 28px; font-size: 14pt;
-                border-left: 4px solid transparent; margin: 2px 0;
+                color: #9ca3af; padding: 14px 20px; font-size: 14pt;
+                border-left: 4px solid transparent; margin: 4px 8px;
+                border-radius: 6px;
             }
-            QListWidget::item:hover { background: rgba(255,255,255,0.04); color: #e5e7eb; }
+            QListWidget::item:hover { 
+                background: rgba(255,255,255,0.06); 
+                color: #ffffff; 
+            }
             QListWidget::item:selected {
-                background: rgba(0,210,106,0.1); color: #00D26A;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 rgba(0,210,106,0.3), stop:1 rgba(0,210,106,0.05));
+                color: #00D26A;
                 border-left: 4px solid #00D26A;
+                border-top: 1px solid rgba(255,255,255,0.1);
+                border-bottom: 1px solid rgba(0,0,0,0.4);
+                border-right: 1px solid rgba(0,0,0,0.4);
+                border-radius: 6px;
             }
         """)
-        for item in ["📊  Overview", "🌐  Network Tree", "🔑  License Manager", "🏪  Shops Monitor", "💻  SQL Explorer", "🚀  Update Manager"]:
+        for item in ["📊  Overview", "🌐  Network Tree", "🔑  License Manager", "🏪  Shops Monitor", "💻  SQL Explorer", "🚀  Update Manager", "🗺️  Locations Map"]:
             self.nav.addItem(item)
         self.nav.setCurrentRow(0)
         self.nav.currentRowChanged.connect(self.stack.setCurrentIndex if hasattr(self, 'stack') else lambda i: None)
@@ -460,6 +893,7 @@ class DistributorDashboard(QMainWindow):
         self._build_shops_tab()
         self._build_sql_tab()
         self._build_updater_tab()
+        self._build_map_main_tab()
         return self.stack
 
     # ── TAB BUILDERS ─────────────────────────
@@ -507,38 +941,41 @@ class DistributorDashboard(QMainWindow):
         l.setContentsMargins(40, 40, 40, 40)
         l.setSpacing(16)
 
-        hdr = QLabel("📡 Distributor Network Tree")
-        hdr.setStyleSheet("font-size: 26pt; font-weight: bold;")
+        hdr = QLabel("📡 Distributor Network Hierarchy")
+        hdr.setStyleSheet("font-size: 26pt; font-weight: bold; color: #58a6ff;")
         l.addWidget(hdr)
 
-        info = QLabel("Click any distributor or shop node to view full details.")
-        info.setStyleSheet("color: #6b7280; font-size: 13pt;")
+        info = QLabel("View your entire distribution network and exact revenue generated at every level.")
+        info.setStyleSheet("color: #8b949e; font-size: 13pt;")
         l.addWidget(info)
 
         self.tree = QTreeWidget()
-        self.tree.setColumnCount(4)
-        self.tree.setHeaderLabels(["Name / ID", "Role", "Region / City", "Info"])
+        self.tree.setColumnCount(5)
+        self.tree.setHeaderLabels(["Entity", "Role", "Total Revenue", "Total Orders", "Network / Contact"])
         self.tree.setStyleSheet("""
             QTreeWidget {
-                background: #0e1628;
-                color: white;
-                border: 1px solid #1e2a45;
+                background: #0d1117;
+                color: #c9d1d9;
+                border: 2px solid #30363d;
+                border-radius: 8px;
                 font-size: 14pt;
+                alternate-background-color: #161b22;
             }
-            QTreeWidget::item { padding: 10px 8px; border-bottom: 1px solid #1e2a45; }
-            QTreeWidget::item:hover { background: #1a2540; }
-            QTreeWidget::item:selected { background: rgba(0,210,106,0.15); color: #00D26A; }
+            QTreeWidget::item { padding: 12px 10px; border-bottom: 1px solid #21262d; }
+            QTreeWidget::item:hover { background: rgba(88,166,255,0.1); }
+            QTreeWidget::item:selected { background: rgba(88,166,255,0.2); color: #58a6ff; }
             QHeaderView::section {
-                background: #1a2235; color: #00D26A; padding: 10px;
-                font-size: 14pt; font-weight: bold; border: 1px solid #2a3450;
+                background: #21262d; color: #58a6ff; padding: 12px;
+                font-size: 13pt; font-weight: bold; border: none; border-right: 1px solid #30363d; border-bottom: 2px solid #30363d;
             }
         """)
+        self.tree.setAlternatingRowColors(True)
         self.tree.header().setStretchLastSection(True)
         self.tree.itemDoubleClicked.connect(self._on_tree_double_click)
         l.addWidget(self.tree)
 
-        hint = QLabel("💡 Double-click a distributor to open their full dashboard")
-        hint.setStyleSheet("color: #4a5568; font-size: 12pt;")
+        hint = QLabel("💡 Double-click any shop to view their analytics modal.")
+        hint.setStyleSheet("color: #8b949e; font-size: 12pt;")
         l.addWidget(hint)
         self.stack.addWidget(w)
 
@@ -677,10 +1114,191 @@ class DistributorDashboard(QMainWindow):
         btn_layout.addStretch()
         btn_layout.addWidget(btn)
         btn_layout.addStretch()
-        l.addLayout(btn_layout)
+        l.addWidget(btn)
         l.addStretch()
         self.stack.addWidget(w)
+
+    def _build_map_main_tab(self):
+        w = QWidget()
+        l = QVBoxLayout(w)
+        l.setContentsMargins(0, 0, 0, 0)
+        l.setSpacing(0)
+
+        # Top Control Bar
+        top_bar = QWidget()
+        top_bar.setStyleSheet("background: #0d1117; border-bottom: 1px solid #30363d;")
+        tbl = QHBoxLayout(top_bar)
+        tbl.setContentsMargins(20, 15, 20, 15)
+        tbl.setSpacing(20)
+
+        hdr = QLabel("📍 Client Locations Map")
+        hdr.setStyleSheet("font-size: 18pt; font-weight: bold; color: white;")
+        tbl.addWidget(hdr)
+
+        tbl.addStretch()
+
+        # Filters
+        self.map_region_filter = QComboBox()
+        self.map_region_filter.setStyleSheet("background: #161b22; color: white; font-size: 12pt; padding: 6px; border: 1px solid #30363d; border-radius: 4px;")
+        self.map_region_filter.setMinimumWidth(150)
+        self.map_region_filter.addItem("All Regions")
         
+        self.map_city_filter = QComboBox()
+        self.map_city_filter.setStyleSheet("background: #161b22; color: white; font-size: 12pt; padding: 6px; border: 1px solid #30363d; border-radius: 4px;")
+        self.map_city_filter.setMinimumWidth(150)
+        self.map_city_filter.addItem("All Cities")
+
+        lbl_region = QLabel("Region:")
+        lbl_region.setStyleSheet("color:#aaa; font-size:12pt;")
+        tbl.addWidget(lbl_region)
+        tbl.addWidget(self.map_region_filter)
+        
+        lbl_city = QLabel("City:")
+        lbl_city.setStyleSheet("color:#aaa; font-size:12pt;")
+        tbl.addWidget(lbl_city)
+        tbl.addWidget(self.map_city_filter)
+
+        self.btn_refresh_map = QPushButton("🔄 Generate Map")
+        self.btn_refresh_map.setStyleSheet("background-color: #238636; color: white; padding: 8px 16px; font-weight: bold; font-size: 12pt; border-radius: 6px;")
+        self.btn_refresh_map.clicked.connect(self._update_map_html)
+        tbl.addWidget(self.btn_refresh_map)
+
+        l.addWidget(top_bar)
+
+        # Map View container
+        self.map_view = QWebEngineView()
+        self.map_page = MapWebPage(self.map_view)
+        self.map_page.click_callback = self._on_map_shop_clicked
+        self.map_view.setPage(self.map_page)
+        self.map_view.setStyleSheet("background: #0d1117;")
+        l.addWidget(self.map_view, stretch=1)
+
+        self.stack.addWidget(w)
+        
+        # Load initially with blank/loading state
+        self.map_view.setHtml("<body style='background-color:#0d1117;'><h2 style='color:white;text-align:center;font-family:sans-serif;margin-top:20%;'>Click Generate Map to load...</h2></body>")
+
+    def _handle_map_url_change(self, url):
+        if url.toString().startswith("qrc:///"): return
+        url_str = url.toString()
+        if "SHOP_CLICKED:" in url_str:
+            shop_id = url_str.split("SHOP_CLICKED:")[1]
+            self._on_map_shop_clicked(shop_id)
+
+    def _on_map_shop_clicked(self, shop_id):
+        if not hasattr(self, '_all_data') or 'shops' not in self._all_data: return
+        shop_data = next((s for s in self._all_data['shops'] if str(s.get('shop_id')) == str(shop_id)), None)
+        if not shop_data: return
+        modal = ShopQuickViewModal(shop_data, self)
+        if modal.exec_() == QDialog.Accepted:
+            detail_modal = ShopDetailModal(shop_data, self._all_data, self)
+            detail_modal.exec_()
+
+    def _populate_map_filters(self):
+        if getattr(self, '_filters_populated', False):
+            return
+        
+        regions = set()
+        cities = set()
+        if hasattr(self, '_all_data') and 'shops' in self._all_data:
+            for s in self._all_data['shops']:
+                if s.get('region'): regions.add(s.get('region'))
+                if s.get('city'): cities.add(s.get('city'))
+        
+        if not regions and not cities:
+            return
+            
+        self._filters_populated = True
+        
+        self.map_region_filter.clear()
+        self.map_region_filter.addItem("All Regions")
+        for r in sorted(regions):
+            self.map_region_filter.addItem(r)
+            
+        self.map_city_filter.clear()
+        self.map_city_filter.addItem("All Cities")
+        for c in sorted(cities):
+            self.map_city_filter.addItem(c)
+
+    def _update_map_html(self):
+        self.btn_refresh_map.setText("Generating...")
+        from PyQt5.QtWidgets import QApplication
+        QApplication.processEvents()
+        try:
+            self._populate_map_filters()
+            
+            sel_region = self.map_region_filter.currentText()
+            sel_city = self.map_city_filter.currentText()
+            
+            markers_js = ""
+            
+            valid_shops = 0
+            if hasattr(self, '_all_data') and 'shops' in self._all_data:
+                for s in self._all_data['shops']:
+                    # Filter logic
+                    if sel_region != "All Regions" and s.get("region") != sel_region:
+                        continue
+                    if sel_city != "All Cities" and s.get("city") != sel_city:
+                        continue
+                        
+                    lat = s.get("latitude")
+                    lon = s.get("longitude")
+                    if not lat or not lon:
+                        continue
+                    try:
+                        lat_f = float(lat)
+                        lon_f = float(lon)
+                        name = str(s.get("shop_name", "Unknown Shop")).replace("'", "\\'")
+                        city = str(s.get("city", "")).replace("'", "\\'")
+                        shop_id = s.get("shop_id", "")
+                        
+                        markers_js += f"""
+                            var marker = L.marker([{lat_f}, {lon_f}]).addTo(map);
+                            marker.bindTooltip("<b>{name}</b><br>{city}");
+                            marker.on('click', function() {{
+                                console.log("SHOP_CLICKED:{shop_id}");
+                            }});
+                        """
+                        valid_shops += 1
+                    except (ValueError, TypeError):
+                        continue
+
+            if valid_shops > 0:
+                html_data = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+                    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+                    <style>
+                        body {{ margin: 0; padding: 0; background-color: #0d1117; }}
+                        #map {{ width: 100vw; height: 100vh; }}
+                    </style>
+                </head>
+                <body>
+                    <div id="map"></div>
+                    <script>
+                        var map = L.map('map').setView([20.5937, 78.9629], 5);
+                        L.tileLayer('https://{{s}}.basemaps.cartocdn.com/light_all/{{z}}/{{x}}/{{y}}{{r}}.png', {{
+                            attribution: '&copy; OpenStreetMap contributors'
+                        }}).addTo(map);
+                        
+                        {markers_js}
+                    </script>
+                </body>
+                </html>
+                """
+                self.map_view.setHtml(html_data)
+            else:
+                self.map_view.setHtml("<body style='background-color:#0d1117;'><h2 style='color:#ff7b72;text-align:center;font-family:sans-serif;margin-top:20%;'>No shops matching filters found.</h2></body>")
+            
+            self.btn_refresh_map.setText("🔄 Generate Map")
+        except Exception as e:
+            self.map_view.setHtml(f"<body style='background-color:#0d1117;'><h2 style='color:#ff7b72;text-align:center;font-family:sans-serif;margin-top:20%;'>Error: {e}</h2></body>")
+            self.btn_refresh_map.setText("🔄 Generate Map")
+
     def _publish_update(self):
         v = self.upd_version_input.text().strip()
         u = self.upd_url_input.text().strip()
@@ -703,8 +1321,8 @@ class DistributorDashboard(QMainWindow):
         w = QWidget()
         l = QVBoxLayout(w)
         l.setContentsMargins(40, 40, 40, 40)
-        terminal = SQLTerminal()
-        l.addWidget(terminal)
+        self.sql_terminal = SQLTerminal()
+        l.addWidget(self.sql_terminal)
         self.stack.addWidget(w)
 
     # ── HELPERS ──────────────────────────────
@@ -722,6 +1340,9 @@ class DistributorDashboard(QMainWindow):
 
     def _on_data(self, data):
         self._all_data = data
+        if hasattr(self, 'sql_terminal'):
+            self.sql_terminal.set_data(data)
+        
         licenses = data.get('licenses', [])
         shops = data.get('shops', [])
         dists = data.get('distributor_ids', [])
@@ -785,56 +1406,93 @@ class DistributorDashboard(QMainWindow):
         dists = data.get('distributor_ids', [])
         dist_shops = data.get('distributor_shops', {})
         direct_shops = data.get('direct_shops', [])
+        all_bills = data.get('all_bills', [])
+
+        # Calculate shop revenues
+        shop_stats = {}
+        global_rev = 0.0
+        global_ord = 0
+        
+        for b in all_bills:
+            sid = str(b.get('shop_id', ''))
+            try:
+                amt = float(b.get('total_amount', 0))
+            except:
+                amt = 0.0
+            
+            if sid not in shop_stats:
+                shop_stats[sid] = {'revenue': 0.0, 'orders': 0}
+            
+            shop_stats[sid]['revenue'] += amt
+            shop_stats[sid]['orders'] += 1
+            global_rev += amt
+            global_ord += 1
 
         # Root: Master Owner
         root = QTreeWidgetItem(self.tree)
-        root.setText(0, "👑  Master Owner (You)")
-        root.setText(1, "Owner")
-        root.setText(2, "Global")
-        root.setText(3, f"{len(shops)} shops total")
-        root.setForeground(0, QBrush(QColor("#00D26A")))
-        font = QFont("Segoe UI", 13, QFont.Bold)
+        root.setText(0, "👑 Master Owner (OWNER)")
+        root.setText(1, "Root Entity")
+        root.setText(2, f"₹{global_rev:,.2f}")
+        root.setText(3, f"{global_ord}")
+        root.setText(4, f"{len(shops)} total shops globally")
+        root.setForeground(0, QBrush(QColor("#3fb950")))
+        root.setForeground(2, QBrush(QColor("#3fb950")))
+        font = QFont("Segoe UI", 14, QFont.Bold)
         root.setFont(0, font)
+        root.setFont(2, font)
+
+        # Direct shops (Owner's Direct Network)
+        if direct_shops:
+            direct_rev = sum(shop_stats.get(str(s.get('shop_id')), {}).get('revenue', 0.0) for s in direct_shops)
+            direct_ord = sum(shop_stats.get(str(s.get('shop_id')), {}).get('orders', 0) for s in direct_shops)
+            
+            direct_node = QTreeWidgetItem(root)
+            direct_node.setText(0, "📋 Owner Direct Sales")
+            direct_node.setText(1, "Direct Network")
+            direct_node.setText(2, f"₹{direct_rev:,.2f}")
+            direct_node.setText(3, f"{direct_ord}")
+            direct_node.setText(4, f"{len(direct_shops)} shops directly managed")
+            direct_node.setForeground(0, QBrush(QColor("#58a6ff")))
+            direct_node.setFont(0, QFont("Segoe UI", 13, QFont.Bold))
+            
+            for s in direct_shops:
+                stats = shop_stats.get(str(s.get('shop_id')), {'revenue': 0.0, 'orders': 0})
+                s_node = QTreeWidgetItem(direct_node)
+                s_node.setText(0, f"🏪 {s.get('shop_name', 'Unknown')}")
+                s_node.setText(1, "Shop")
+                s_node.setText(2, f"₹{stats['revenue']:,.2f}")
+                s_node.setText(3, f"{stats['orders']}")
+                s_node.setText(4, f"{s.get('city', '')} {s.get('region', '')}".strip() or "N/A")
+                s_node.setData(0, Qt.UserRole, {"type": "shop", "shop_data": s})
 
         # Distributor nodes
         for dist_id in dists:
             d_shops = dist_shops.get(dist_id, [])
+            d_rev = sum(shop_stats.get(str(s.get('shop_id')), {}).get('revenue', 0.0) for s in d_shops)
+            d_ord = sum(shop_stats.get(str(s.get('shop_id')), {}).get('orders', 0) for s in d_shops)
+            
             d_node = QTreeWidgetItem(root)
-            d_node.setText(0, f"📦  {dist_id}")
+            d_node.setText(0, f"📦 {dist_id}")
             d_node.setText(1, "Distributor")
-            regions = set(s.get('region', '') for s in d_shops if s.get('region'))
-            d_node.setText(2, ", ".join(list(regions)[:2]) or "N/A")
-            d_node.setText(3, f"{len(d_shops)} shops")
-            d_node.setForeground(0, QBrush(QColor("#f59e0b")))
-            d_node.setFont(0, QFont("Segoe UI", 13))
+            d_node.setText(2, f"₹{d_rev:,.2f}")
+            d_node.setText(3, f"{d_ord}")
+            d_node.setText(4, f"{len(d_shops)} sub-shops")
+            d_node.setForeground(0, QBrush(QColor("#e3b341")))
+            d_node.setFont(0, QFont("Segoe UI", 13, QFont.Bold))
             d_node.setData(0, Qt.UserRole, {"type": "distributor", "id": dist_id})
 
             for s in d_shops:
+                stats = shop_stats.get(str(s.get('shop_id')), {'revenue': 0.0, 'orders': 0})
                 s_node = QTreeWidgetItem(d_node)
-                s_node.setText(0, f"🏪  {s.get('shop_name', s.get('shop_id', 'Unknown'))}")
+                s_node.setText(0, f"🏪 {s.get('shop_name', s.get('shop_id', 'Unknown'))}")
                 s_node.setText(1, "Shop")
-                s_node.setText(2, f"{s.get('city', '')} {s.get('region', '')}".strip() or "N/A")
-                s_node.setText(3, s.get('email', 'N/A'))
-                s_node.setFont(0, QFont("Segoe UI", 12))
-
-        # Direct shops (no distributor)
-        if direct_shops:
-            direct_node = QTreeWidgetItem(root)
-            direct_node.setText(0, "📋  Direct Registrations")
-            direct_node.setText(1, "Group")
-            direct_node.setText(2, "Various")
-            direct_node.setText(3, f"{len(direct_shops)} shops")
-            direct_node.setForeground(0, QBrush(QColor("#3b82f6")))
-            direct_node.setFont(0, QFont("Segoe UI", 13))
-            for s in direct_shops:
-                s_node = QTreeWidgetItem(direct_node)
-                s_node.setText(0, f"🏪  {s.get('shop_name', 'Unknown')}")
-                s_node.setText(1, "Shop")
-                s_node.setText(2, f"{s.get('city', '')} {s.get('region', '')}".strip() or "N/A")
-                s_node.setText(3, s.get('email', 'N/A'))
+                s_node.setText(2, f"₹{stats['revenue']:,.2f}")
+                s_node.setText(3, f"{stats['orders']}")
+                s_node.setText(4, f"{s.get('city', '')} {s.get('region', '')}".strip() or "N/A")
+                s_node.setData(0, Qt.UserRole, {"type": "shop", "shop_data": s})
 
         self.tree.expandAll()
-        for i in range(4):
+        for i in range(5):
             self.tree.resizeColumnToContents(i)
 
     def _on_tree_double_click(self, item, col):
@@ -846,6 +1504,10 @@ class DistributorDashboard(QMainWindow):
             dist_shops = self._all_data.get('distributor_shops', {}).get(dist_id, [])
             licenses = self._all_data.get('licenses', [])
             modal = DistributorDetailModal(dist_id, dist_shops, licenses, self)
+            modal.exec_()
+        elif data.get('type') == 'shop':
+            shop_data = data.get('shop_data', {})
+            modal = ShopDetailModal(shop_data, self._all_data, self)
             modal.exec_()
 
     # ── LICENSE GENERATION ────────────────────
@@ -1170,6 +1832,7 @@ class AdminLoginDialog(QDialog):
 
 # ─────────────────────────────────────────────
 if __name__ == "__main__":
+    QCoreApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
     app = QApplication(sys.argv)
     app.setFont(QFont("Segoe UI", 12))
 
