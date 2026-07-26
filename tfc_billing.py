@@ -10038,6 +10038,7 @@ class ProfitLossAnalyticsDialog(QDialog):
                 self.cust_table.setItem(r, ci, it)
 
     def _populate_bi(self):
+        sep = '\n'
         # Top 5 Winners
         items_sorted = sorted(self.item_stats.items(), key=lambda x: x[1]["rev"]-x[1]["cogs"], reverse=True)
         top5 = sep.join([f'  {i+1}. {n} - Rs.{(s["rev"]-s["cogs"]):,.0f}' for i,(n,s) in enumerate(items_sorted[:5])]) or 'No data'
