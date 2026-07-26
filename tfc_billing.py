@@ -577,6 +577,10 @@ class ModernLoginScreen(QDialog):
         # Stub to be overridden
         pass
 
+    def show_premium_modal(self):
+        self.premium_modal = PremiumActionModal(self)
+        self.premium_modal.showFullScreen()
+
     def show_home_window(self):
         self.home_win = HomeWindow(self)
         self.home_win.showFullScreen()
@@ -789,6 +793,96 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtCore import pyqtSignal, QObject
 
 
+
+class PremiumActionModal(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Unlock Premium - BlingZen")
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.init_ui()
+
+    def init_ui(self):
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        self.bg = AnimatedBackground()
+        bg_layout = QVBoxLayout(self.bg)
+        bg_layout.setContentsMargins(40, 40, 40, 40)
+
+        header_layout = QHBoxLayout()
+        btn_back = QPushButton("✕ Close")
+        btn_back.setCursor(Qt.PointingHandCursor)
+        btn_back.setStyleSheet("QPushButton { color: #ccc; background: transparent; border: none; font-size: 14pt; font-weight: bold; } QPushButton:hover { color: white; }")
+        btn_back.clicked.connect(self.close)
+        header_layout.addStretch()
+        header_layout.addWidget(btn_back)
+        bg_layout.addLayout(header_layout)
+
+        content_layout = QVBoxLayout()
+        content_layout.setAlignment(Qt.AlignCenter)
+        
+        lbl_title = QLabel("Unlock BlingZen Premium 🚀")
+        lbl_title.setStyleSheet("color: white; font-size: 32pt; font-weight: bold; margin-bottom: 10px;")
+        lbl_title.setAlignment(Qt.AlignCenter)
+        content_layout.addWidget(lbl_title)
+        
+        lbl_subtitle = QLabel("You're one step away from revolutionizing your business! Book a 1-on-1 demo today.")
+        lbl_subtitle.setStyleSheet("color: #ccc; font-size: 16pt; margin-bottom: 30px;")
+        lbl_subtitle.setAlignment(Qt.AlignCenter)
+        content_layout.addWidget(lbl_subtitle)
+        
+        form_widget = QFrame()
+        form_widget.setStyleSheet("QFrame { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; }")
+        form_layout = QVBoxLayout(form_widget)
+        form_layout.setContentsMargins(40, 40, 40, 40)
+        
+        inp_name = QLineEdit()
+        inp_name.setPlaceholderText("Enter your Name")
+        inp_name.setStyleSheet("QLineEdit { background: rgba(0,0,0,0.3); color: white; border: 1px solid #444; border-radius: 8px; padding: 15px; font-size: 14pt; margin-bottom: 15px; } QLineEdit:focus { border: 1px solid #e30613; }")
+        form_layout.addWidget(inp_name)
+        
+        inp_phone = QLineEdit()
+        inp_phone.setPlaceholderText("Enter your Phone Number")
+        inp_phone.setStyleSheet("QLineEdit { background: rgba(0,0,0,0.3); color: white; border: 1px solid #444; border-radius: 8px; padding: 15px; font-size: 14pt; margin-bottom: 25px; } QLineEdit:focus { border: 1px solid #e30613; }")
+        form_layout.addWidget(inp_phone)
+        
+        btn_submit = QPushButton("Request Demo")
+        btn_submit.setCursor(Qt.PointingHandCursor)
+        btn_submit.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #e30613, stop:1 #ff4d4d);
+                color: white; font-size: 16pt; font-weight: bold; padding: 15px; border-radius: 8px;
+            }
+            QPushButton:hover { background: #ff4d4d; }
+        """)
+        btn_submit.clicked.connect(lambda: [QMessageBox.information(self, "Success", "Thanks! Our team will contact you shortly."), self.close()])
+        form_layout.addWidget(btn_submit)
+        
+        content_layout.addWidget(form_widget)
+        
+        lbl_or = QLabel("— OR —")
+        lbl_or.setStyleSheet("color: #aaa; font-size: 14pt; margin-top: 30px; margin-bottom: 30px;")
+        lbl_or.setAlignment(Qt.AlignCenter)
+        content_layout.addWidget(lbl_or)
+        
+        btn_wa = QPushButton("💬 Chat on WhatsApp (+91 9778561010)")
+        btn_wa.setCursor(Qt.PointingHandCursor)
+        btn_wa.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #25D366, stop:1 #128C7E);
+                color: white; font-size: 16pt; font-weight: bold; padding: 15px 30px; border-radius: 25px;
+            }
+            QPushButton:hover { background: #25D366; }
+        """)
+        content_layout.addWidget(btn_wa, alignment=Qt.AlignCenter)
+        
+        bg_layout.addStretch()
+        bg_layout.addLayout(content_layout)
+        bg_layout.addStretch()
+        
+        main_layout.addWidget(self.bg)
+
+
 class HomeWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -846,8 +940,8 @@ class HomeWindow(QDialog):
                 background: #ff4d4d; border: 2px solid white;
             }
         """)
-        # In the future, this can navigate to registration or pricing
-        btn_trial.clicked.connect(self.close)
+        # Opens premium modal
+        btn_trial.clicked.connect(lambda: self._handle_premium())
         cta_layout.addWidget(btn_trial)
         
         btn_demo = QPushButton("📅 Book Demo")
@@ -861,6 +955,7 @@ class HomeWindow(QDialog):
                 background: rgba(255,255,255,0.1); border: 2px solid #00D26A; color: #00D26A;
             }
         """)
+        btn_demo.clicked.connect(lambda: self._handle_premium())
         cta_layout.addWidget(btn_demo)
         cta_layout.addStretch()
         bg_layout.addLayout(cta_layout)
@@ -924,6 +1019,21 @@ class HomeWindow(QDialog):
         bg_layout.addStretch()
         main_layout.addWidget(self.bg)
 
+    def _handle_premium(self):
+        if self.parent() and hasattr(self.parent(), 'show_premium_modal'):
+            self.parent().show_premium_modal()
+        self.close()
+
+    def _handle_premium(self):
+        if self.parent() and hasattr(self.parent(), 'show_premium_modal'):
+            self.parent().show_premium_modal()
+        self.close()
+
+    def _handle_premium(self):
+        if self.parent() and hasattr(self.parent(), 'show_premium_modal'):
+            self.parent().show_premium_modal()
+        self.close()
+
 class FeaturesWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -960,7 +1070,7 @@ class FeaturesWindow(QDialog):
             }
             QPushButton:hover { background: #c084fc; }
         """)
-        btn_upgrade.clicked.connect(self.close)
+        btn_upgrade.clicked.connect(lambda: self._handle_premium())
         
         header_layout.addStretch()
         header_layout.addWidget(btn_upgrade)
@@ -1080,7 +1190,7 @@ class SupportWindow(QDialog):
         u_btn = QPushButton("Upgrade Now")
         u_btn.setCursor(Qt.PointingHandCursor)
         u_btn.setStyleSheet("QPushButton { background: #e30613; color: white; font-size: 14pt; font-weight: bold; padding: 12px; border-radius: 8px; margin-top: 15px; } QPushButton:hover { background: #ff4d4d; }")
-        u_btn.clicked.connect(self.close) # Close modal to reveal pricing
+        u_btn.clicked.connect(lambda: self._handle_premium())
         u_layout.addWidget(u_title)
         u_layout.addWidget(u_desc)
         u_layout.addWidget(u_btn)
