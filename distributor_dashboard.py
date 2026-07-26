@@ -1754,18 +1754,18 @@ class DistributorDashboard(QMainWindow):
         form.setLabelAlignment(Qt.AlignRight)
         form.setSpacing(20)
         
-        self.theme_primary_input = QLineEdit()
-        self.theme_primary_input.setPlaceholderText("e.g. #e30613 (Primary Accent Color)")
-        
-        self.theme_bg_input = QLineEdit()
-        self.theme_bg_input.setPlaceholderText("e.g. #f0f2f5 (Background Color)")
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItem("Default Red", {"primary_color": "#e30613", "background_color": "#f0f2f5"})
+        self.theme_combo.addItem("Midnight Blue", {"primary_color": "#3b82f6", "background_color": "#1e1e2d"})
+        self.theme_combo.addItem("Emerald Green", {"primary_color": "#10b981", "background_color": "#f0fdf4"})
+        self.theme_combo.addItem("Royal Purple", {"primary_color": "#8b5cf6", "background_color": "#f5f3ff"})
+        self.theme_combo.setStyleSheet("font-size: 14pt; padding: 5px;")
         
         self.promo_html_input = QTextEdit()
         self.promo_html_input.setPlaceholderText("Enter HTML or plain text for the promotional banner at the top of the dashboard...")
         self.promo_html_input.setMinimumHeight(150)
         
-        form.addRow(QLabel("Primary Color:"), self.theme_primary_input)
-        form.addRow(QLabel("Background Color:"), self.theme_bg_input)
+        form.addRow(QLabel("Pre-built Theme:"), self.theme_combo)
         form.addRow(QLabel("Promotional Banner (HTML):"), self.promo_html_input)
         
         layout.addLayout(form)
@@ -1775,8 +1775,12 @@ class DistributorDashboard(QMainWindow):
             try:
                 conf = db.collection('app_config').document('theme_promo').get()
                 if conf:
-                    self.theme_primary_input.setText(conf.get('primary_color', ''))
-                    self.theme_bg_input.setText(conf.get('background_color', ''))
+                    saved_primary = conf.get('primary_color', '')
+                    for i in range(self.theme_combo.count()):
+                        theme_data = self.theme_combo.itemData(i)
+                        if theme_data and theme_data.get('primary_color') == saved_primary:
+                            self.theme_combo.setCurrentIndex(i)
+                            break
                     self.promo_html_input.setText(conf.get('promo_html', ''))
             except: pass
             
@@ -1796,9 +1800,10 @@ class DistributorDashboard(QMainWindow):
         self.stack.addWidget(tab)
 
     def _save_theme_promo_config(self):
+        theme_data = self.theme_combo.currentData()
         data = {
-            "primary_color": self.theme_primary_input.text().strip(),
-            "background_color": self.theme_bg_input.text().strip(),
+            "primary_color": theme_data.get("primary_color"),
+            "background_color": theme_data.get("background_color"),
             "promo_html": self.promo_html_input.toPlainText().strip()
         }
         
