@@ -8302,27 +8302,27 @@ class MasterDataDialog(QDialog):
         bg_frame = QFrame()
         bg_frame.setStyleSheet("""
             QFrame {
-                background-color: #121824; 
-                border-radius: 15px; 
+                background-color: #0A0F18; 
+                border-radius: 12px; 
                 border: 1px solid rgba(255,255,255,0.1);
             }
         """)
         layout = QVBoxLayout(bg_frame)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
+        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setSpacing(20)
         
         # Header
         header_layout = QHBoxLayout()
         title = QLabel("🛠️ Master Data Hub")
-        title.setStyleSheet("color: white; font-size: 24pt; font-weight: bold; background: transparent; border: none;")
+        title.setStyleSheet("color: white; font-size: 20pt; font-weight: bold; background: transparent; border: none;")
         
         btn_close = QPushButton("✕ Close (Esc)")
         btn_close.setCursor(Qt.PointingHandCursor)
         btn_close.setStyleSheet("""
             QPushButton { 
-                background: rgba(255,255,255,0.1); color: white; border-radius: 8px; padding: 8px 15px; font-weight: bold; 
+                background: rgba(255,255,255,0.05); color: #ccc; border-radius: 6px; padding: 8px 16px; font-weight: bold; font-size: 11pt; border: 1px solid rgba(255,255,255,0.1);
             }
-            QPushButton:hover { background: #e30613; }
+            QPushButton:hover { background: #e30613; color: white; border-color: #e30613; }
         """)
         btn_close.clicked.connect(self.close)
         
@@ -8336,11 +8336,16 @@ class MasterDataDialog(QDialog):
         self.tabs.setStyleSheet("""
             QTabWidget::pane { border: none; background: transparent; }
             QTabBar::tab {
-                background: rgba(255,255,255,0.05); color: #ccc; font-size: 13pt; font-weight: bold;
-                padding: 12px 25px; margin-right: 5px; border-radius: 8px;
+                background: rgba(255,255,255,0.03); 
+                color: #888; 
+                font-size: 11pt; 
+                font-weight: bold;
+                padding: 10px 20px; 
+                margin-right: 4px; 
+                border-radius: 6px;
             }
             QTabBar::tab:selected { background: #e30613; color: white; }
-            QTabBar::tab:hover:!selected { background: rgba(255,255,255,0.1); }
+            QTabBar::tab:hover:!selected { background: rgba(255,255,255,0.08); color: white; }
         """)
         
         self.tabs.addTab(self.create_master_tab("units", "name", "Measurement Units"), "⚖️ Units")
@@ -8360,29 +8365,31 @@ class MasterDataDialog(QDialog):
 
     def create_master_tab(self, table_name, col_name, title):
         widget = QWidget()
+        # Ensure the widget itself is transparent so it doesn't overlap weirdly
+        widget.setStyleSheet("background: transparent;")
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(10, 20, 10, 10)
-        layout.setSpacing(20)
+        layout.setContentsMargins(0, 15, 0, 0)
+        layout.setSpacing(15)
         
         add_layout = QHBoxLayout()
         txt_input = QLineEdit()
         txt_input.setPlaceholderText(f"Add New {title}... (Press Enter)")
         txt_input.setStyleSheet("""
             QLineEdit {
-                background: rgba(0,0,0,0.3); color: white; font-size: 14pt; padding: 12px;
-                border: 2px solid rgba(255,255,255,0.1); border-radius: 8px;
+                background: rgba(255,255,255,0.05); color: white; font-size: 12pt; padding: 12px;
+                border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
             }
-            QLineEdit:focus { border: 2px solid #e30613; }
+            QLineEdit:focus { border: 1px solid #e30613; background: rgba(0,0,0,0.3); }
         """)
         
         btn_add = QPushButton("Add")
         btn_add.setCursor(Qt.PointingHandCursor)
         btn_add.setStyleSheet("""
             QPushButton {
-                background: #00D26A; color: white; font-size: 14pt; font-weight: bold;
-                padding: 12px 30px; border-radius: 8px; border: none;
+                background: #e30613; color: white; font-size: 12pt; font-weight: bold;
+                padding: 12px 30px; border-radius: 6px; border: none;
             }
-            QPushButton:hover { background: #00b359; }
+            QPushButton:hover { background: #ff4d4d; }
         """)
         
         add_layout.addWidget(txt_input)
@@ -8398,16 +8405,21 @@ class MasterDataDialog(QDialog):
         table.setFocusPolicy(Qt.StrongFocus)
         table.setStyleSheet("""
             QTableWidget {
-                background: rgba(255,255,255,0.02); color: white; font-size: 12pt;
-                border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; gridline-color: rgba(255,255,255,0.05);
+                background-color: #121824; 
+                color: #e2e8f0; 
+                font-size: 11pt;
+                border: 1px solid #2d3748; 
+                border-radius: 6px; 
+                gridline-color: #2d3748;
+                outline: 0;
             }
-            QTableWidget::item { padding: 10px; }
-            QTableWidget::item:selected { background: rgba(227,6,19,0.3); color: white; }
+            QTableWidget::item { padding: 8px; border-bottom: 1px solid #1a202c; }
+            QTableWidget::item:selected { background-color: rgba(227, 6, 19, 0.4); color: white; }
             QHeaderView::section {
-                background: rgba(0,0,0,0.5); color: #aaa; font-weight: bold; font-size: 12pt;
-                padding: 10px; border: none; border-bottom: 1px solid rgba(255,255,255,0.1);
+                background-color: #1a202c; color: #a0aec0; font-weight: bold; font-size: 11pt;
+                padding: 10px; border: none; border-bottom: 1px solid #2d3748; border-right: 1px solid #2d3748;
             }
-            QTableCornerButton::section { background: transparent; }
+            QTableView QTableCornerButton::section { background: #1a202c; border: none; }
         """)
         table.verticalHeader().setVisible(False)
         layout.addWidget(table)
@@ -8416,8 +8428,8 @@ class MasterDataDialog(QDialog):
         btn_del.setCursor(Qt.PointingHandCursor)
         btn_del.setStyleSheet("""
             QPushButton {
-                background: transparent; color: #ff4d4d; font-size: 12pt; font-weight: bold;
-                padding: 10px; border: 1px solid #ff4d4d; border-radius: 8px;
+                background: transparent; color: #ff4d4d; font-size: 11pt; font-weight: bold;
+                padding: 10px 20px; border: 1px solid #ff4d4d; border-radius: 6px;
             }
             QPushButton:hover { background: rgba(255,77,77,0.1); }
         """)
@@ -8445,7 +8457,6 @@ class MasterDataDialog(QDialog):
                 txt_input.clear()
                 load_data()
             except Exception as e:
-                # Silently ignore if already exists, just clear to maintain flow
                 txt_input.clear()
             txt_input.setFocus()
                 
@@ -8458,12 +8469,10 @@ class MasterDataDialog(QDialog):
             self.conn.commit()
             load_data()
             
-        # Connections
         btn_add.clicked.connect(add_data)
-        txt_input.returnPressed.connect(add_data) # ENTER KEY FLOW
+        txt_input.returnPressed.connect(add_data)
         btn_del.clicked.connect(del_data)
         
-        # DELETE KEY FLOW on Table
         def table_key_press(event):
             if event.key() == Qt.Key_Delete:
                 del_data()
@@ -8476,13 +8485,13 @@ class MasterDataDialog(QDialog):
 
     def create_ingredients_tab(self):
         w = QWidget()
+        w.setStyleSheet("background: transparent;")
         layout = QVBoxLayout(w)
-        layout.setContentsMargins(10, 20, 10, 10)
-        layout.setSpacing(20)
+        layout.setContentsMargins(0, 15, 0, 0)
+        layout.setSpacing(15)
         
-        # Form layout
         form_frame = QFrame()
-        form_frame.setStyleSheet("QFrame { background: rgba(0,0,0,0.2); border-radius: 8px; }")
+        form_frame.setStyleSheet("QFrame { background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }")
         form_layout = QHBoxLayout(form_frame)
         form_layout.setContentsMargins(15, 15, 15, 15)
         
@@ -8504,7 +8513,7 @@ class MasterDataDialog(QDialog):
         for w_input in [self.ing_name_input, self.ing_cost_input, self.ing_unit_input]:
             w_input.setStyleSheet("""
                 QLineEdit, QComboBox {
-                    background: rgba(0,0,0,0.3); color: white; font-size: 13pt; padding: 10px;
+                    background: rgba(0,0,0,0.3); color: white; font-size: 11pt; padding: 10px;
                     border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
                 }
                 QLineEdit:focus, QComboBox:focus { border: 1px solid #e30613; }
@@ -8515,14 +8524,13 @@ class MasterDataDialog(QDialog):
         btn_add.setCursor(Qt.PointingHandCursor)
         btn_add.setStyleSheet("""
             QPushButton {
-                background: #00D26A; color: white; font-size: 13pt; font-weight: bold;
+                background: #e30613; color: white; font-size: 11pt; font-weight: bold;
                 padding: 10px 20px; border-radius: 6px; border: none;
             }
-            QPushButton:hover { background: #00b359; }
+            QPushButton:hover { background: #ff4d4d; }
         """)
         btn_add.clicked.connect(self.add_ingredient)
         
-        # ENTER KEY FLOW
         self.ing_name_input.returnPressed.connect(self.add_ingredient)
         self.ing_cost_input.returnPressed.connect(self.add_ingredient)
         
@@ -8541,15 +8549,21 @@ class MasterDataDialog(QDialog):
         self.ing_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.ing_table.setStyleSheet("""
             QTableWidget {
-                background: rgba(255,255,255,0.02); color: white; font-size: 12pt;
-                border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; gridline-color: rgba(255,255,255,0.05);
+                background-color: #121824; 
+                color: #e2e8f0; 
+                font-size: 11pt;
+                border: 1px solid #2d3748; 
+                border-radius: 6px; 
+                gridline-color: #2d3748;
+                outline: 0;
             }
-            QTableWidget::item { padding: 10px; }
-            QTableWidget::item:selected { background: rgba(227,6,19,0.3); color: white; }
+            QTableWidget::item { padding: 8px; border-bottom: 1px solid #1a202c; }
+            QTableWidget::item:selected { background-color: rgba(227, 6, 19, 0.4); color: white; }
             QHeaderView::section {
-                background: rgba(0,0,0,0.5); color: #aaa; font-weight: bold; font-size: 12pt;
-                padding: 10px; border: none; border-bottom: 1px solid rgba(255,255,255,0.1);
+                background-color: #1a202c; color: #a0aec0; font-weight: bold; font-size: 11pt;
+                padding: 10px; border: none; border-bottom: 1px solid #2d3748; border-right: 1px solid #2d3748;
             }
+            QTableView QTableCornerButton::section { background: #1a202c; border: none; }
         """)
         self.ing_table.verticalHeader().setVisible(False)
         layout.addWidget(self.ing_table)
@@ -8558,15 +8572,14 @@ class MasterDataDialog(QDialog):
         btn_delete.setCursor(Qt.PointingHandCursor)
         btn_delete.setStyleSheet("""
             QPushButton {
-                background: transparent; color: #ff4d4d; font-size: 12pt; font-weight: bold;
-                padding: 10px; border: 1px solid #ff4d4d; border-radius: 8px;
+                background: transparent; color: #ff4d4d; font-size: 11pt; font-weight: bold;
+                padding: 10px 20px; border: 1px solid #ff4d4d; border-radius: 6px;
             }
             QPushButton:hover { background: rgba(255,77,77,0.1); }
         """)
         btn_delete.clicked.connect(self.delete_ingredient)
         layout.addWidget(btn_delete, alignment=Qt.AlignRight)
         
-        # DELETE KEY FLOW on Table
         def table_key_press(event):
             if event.key() == Qt.Key_Delete:
                 self.delete_ingredient()
