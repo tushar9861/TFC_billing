@@ -417,8 +417,14 @@ class ModernLoginScreen(QDialog):
                 QPushButton:hover { color: white; }
             """)
             btn.setCursor(Qt.PointingHandCursor)
-            if btn_text == "Pricing":
+            if btn_text == "Home":
+                btn.clicked.connect(self.show_home_window)
+            elif btn_text == "Features":
+                btn.clicked.connect(self.show_features_window)
+            elif btn_text == "Pricing":
                 btn.clicked.connect(self.show_pricing_window)
+            elif btn_text == "Support":
+                btn.clicked.connect(self.show_support_window)
             nav_layout.addWidget(btn)
         right_layout.addLayout(nav_layout)
         
@@ -571,9 +577,21 @@ class ModernLoginScreen(QDialog):
         # Stub to be overridden
         pass
 
+    def show_home_window(self):
+        self.home_win = HomeWindow(self)
+        self.home_win.showFullScreen()
+
+    def show_features_window(self):
+        self.features_win = FeaturesWindow(self)
+        self.features_win.showFullScreen()
+
     def show_pricing_window(self):
         self.pricing_win = PricingWindow(self)
         self.pricing_win.showFullScreen()
+
+    def show_support_window(self):
+        self.support_win = SupportWindow(self)
+        self.support_win.showFullScreen()
 
 class PricingWindow(QDialog):
     def __init__(self, parent=None):
@@ -769,6 +787,223 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 # Web Ordering Integration
 from PyQt5.QtCore import pyqtSignal, QObject
+
+
+class HomeWindow(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Home - BlingZen")
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.init_ui()
+
+    def init_ui(self):
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        self.bg = AnimatedBackground()
+        bg_layout = QVBoxLayout(self.bg)
+        bg_layout.setContentsMargins(40, 40, 40, 40)
+
+        header_layout = QHBoxLayout()
+        btn_back = QPushButton("← Back")
+        btn_back.setCursor(Qt.PointingHandCursor)
+        btn_back.setStyleSheet("QPushButton { color: white; background: transparent; border: none; font-size: 14pt; font-weight: bold; } QPushButton:hover { color: #e30613; }")
+        btn_back.clicked.connect(self.close)
+        header_layout.addWidget(btn_back)
+        header_layout.addStretch()
+        
+        lbl_title = QLabel("Welcome to BlingZen")
+        lbl_title.setStyleSheet("color: white; font-size: 28pt; font-weight: bold;")
+        header_layout.addWidget(lbl_title)
+        header_layout.addStretch()
+        bg_layout.addLayout(header_layout)
+
+        # Hero
+        hero = QLabel("The Ultimate Cloud POS System for Modern Businesses")
+        hero.setAlignment(Qt.AlignCenter)
+        hero.setStyleSheet("color: #aaa; font-size: 16pt; margin-top: 20px; margin-bottom: 40px;")
+        bg_layout.addWidget(hero)
+
+        # Catalogue
+        catalog_layout = QHBoxLayout()
+        catalog_layout.setSpacing(30)
+        
+        products = [
+            ("🍔", "Restaurant POS", "Complete dining, QSR, and cloud kitchen management."),
+            ("📦", "Inventory Management", "Track stock, raw materials, and suppliers in real-time."),
+            ("📊", "Business Analytics", "Deep insights into sales, staff performance, and profit."),
+            ("📱", "Customer App", "White-labeled apps for loyalty, ordering, and marketing.")
+        ]
+        
+        for icon, title, desc in products:
+            card = QFrame()
+            card.setStyleSheet("QFrame { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; } QFrame:hover { background: rgba(255, 255, 255, 0.1); border-color: #e30613; }")
+            c_layout = QVBoxLayout(card)
+            c_layout.setContentsMargins(25, 25, 25, 25)
+            
+            lbl_icon = QLabel(icon)
+            lbl_icon.setStyleSheet("font-size: 40pt; background: transparent; border: none;")
+            lbl_icon.setAlignment(Qt.AlignCenter)
+            c_layout.addWidget(lbl_icon)
+            
+            lbl_t = QLabel(title)
+            lbl_t.setStyleSheet("color: white; font-size: 14pt; font-weight: bold; margin-top: 10px; background: transparent; border: none;")
+            lbl_t.setAlignment(Qt.AlignCenter)
+            c_layout.addWidget(lbl_t)
+            
+            lbl_d = QLabel(desc)
+            lbl_d.setStyleSheet("color: #aaa; font-size: 11pt; background: transparent; border: none;")
+            lbl_d.setAlignment(Qt.AlignCenter)
+            lbl_d.setWordWrap(True)
+            c_layout.addWidget(lbl_d)
+            
+            catalog_layout.addWidget(card)
+            
+        bg_layout.addLayout(catalog_layout)
+        bg_layout.addStretch()
+        main_layout.addWidget(self.bg)
+
+class FeaturesWindow(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Features - BlingZen")
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.init_ui()
+
+    def init_ui(self):
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        self.bg = AnimatedBackground()
+        bg_layout = QVBoxLayout(self.bg)
+        bg_layout.setContentsMargins(40, 40, 40, 40)
+
+        header_layout = QHBoxLayout()
+        btn_back = QPushButton("← Back")
+        btn_back.setCursor(Qt.PointingHandCursor)
+        btn_back.setStyleSheet("QPushButton { color: white; background: transparent; border: none; font-size: 14pt; font-weight: bold; } QPushButton:hover { color: #e30613; }")
+        btn_back.clicked.connect(self.close)
+        header_layout.addWidget(btn_back)
+        header_layout.addStretch()
+        
+        lbl_title = QLabel("Powerful Features")
+        lbl_title.setStyleSheet("color: white; font-size: 28pt; font-weight: bold;")
+        header_layout.addWidget(lbl_title)
+        header_layout.addStretch()
+        bg_layout.addLayout(header_layout)
+
+        tree = QTreeWidget()
+        tree.setHeaderHidden(True)
+        tree.setStyleSheet("""
+            QTreeWidget { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; font-size: 13pt; padding: 10px; }
+            QTreeWidget::item { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+            QTreeWidget::item:hover { background: rgba(255,255,255,0.08); }
+            QTreeWidget::branch:has-children:!has-siblings:closed, QTreeWidget::branch:closed:has-children:has-siblings { border-image: none; image: none; }
+            QTreeWidget::branch:open:has-children:!has-siblings, QTreeWidget::branch:open:has-children:has-siblings { border-image: none; image: none; }
+        """)
+        
+        features_data = {
+            "🚀 Core Point of Sale": ["Lightning-fast billing interface", "Multi-payment split support", "Offline mode resilience"],
+            "🍳 Kitchen Management": ["Real-time KOT displays", "Order timing & tracking", "Recipe cost management"],
+            "☁️ Cloud Synchronization": ["Real-time multi-branch sync", "Centralized menu management", "Live dashboard analytics"],
+            "📈 Marketing & CRM": ["Loyalty points engine", "Automated SMS/Email offers", "Customer buying patterns"]
+        }
+        
+        for category, items in features_data.items():
+            cat_item = QTreeWidgetItem([category])
+            cat_item.setFont(0, QFont("Segoe UI", 16, QFont.Bold))
+            for item in items:
+                child = QTreeWidgetItem(["   • " + item])
+                child.setFont(0, QFont("Segoe UI", 12))
+                cat_item.addChild(child)
+            tree.addTopLevelItem(cat_item)
+            cat_item.setExpanded(True)
+            
+        bg_layout.addWidget(tree)
+        main_layout.addWidget(self.bg)
+
+class SupportWindow(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Support - BlingZen")
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.init_ui()
+
+    def init_ui(self):
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        self.bg = AnimatedBackground()
+        bg_layout = QVBoxLayout(self.bg)
+        bg_layout.setContentsMargins(40, 40, 40, 40)
+
+        header_layout = QHBoxLayout()
+        btn_back = QPushButton("← Back")
+        btn_back.setCursor(Qt.PointingHandCursor)
+        btn_back.setStyleSheet("QPushButton { color: white; background: transparent; border: none; font-size: 14pt; font-weight: bold; } QPushButton:hover { color: #e30613; }")
+        btn_back.clicked.connect(self.close)
+        header_layout.addWidget(btn_back)
+        header_layout.addStretch()
+        
+        lbl_title = QLabel("Help & Support")
+        lbl_title.setStyleSheet("color: white; font-size: 28pt; font-weight: bold;")
+        header_layout.addWidget(lbl_title)
+        header_layout.addStretch()
+        bg_layout.addLayout(header_layout)
+
+        content_layout = QHBoxLayout()
+        
+        # Left: FAQ
+        faq_widget = QWidget()
+        faq_layout = QVBoxLayout(faq_widget)
+        faq_label = QLabel("Frequently Asked Questions")
+        faq_label.setStyleSheet("color: #e30613; font-size: 18pt; font-weight: bold;")
+        faq_layout.addWidget(faq_label)
+        
+        faqs = [
+            ("How do I setup my first printer?", "Navigate to the Hardware settings in the Dashboard and add your printer IP or select the USB printer from the list."),
+            ("Can I use the POS offline?", "Yes, BlingZen POS works completely offline. It will automatically sync your bills and inventory when the connection is restored."),
+            ("How do I contact premium support?", "Use the contact information on the right to reach our priority support team available 24/7.")
+        ]
+        
+        for q, a in faqs:
+            q_lbl = QLabel(q)
+            q_lbl.setStyleSheet("color: white; font-size: 13pt; font-weight: bold; margin-top: 15px;")
+            q_lbl.setWordWrap(True)
+            a_lbl = QLabel(a)
+            a_lbl.setStyleSheet("color: #aaa; font-size: 11pt;")
+            a_lbl.setWordWrap(True)
+            faq_layout.addWidget(q_lbl)
+            faq_layout.addWidget(a_lbl)
+            
+        faq_layout.addStretch()
+        content_layout.addWidget(faq_widget, 6)
+        
+        # Right: Contact Info
+        contact_widget = QFrame()
+        contact_widget.setStyleSheet("QFrame { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; }")
+        contact_layout = QVBoxLayout(contact_widget)
+        contact_layout.setContentsMargins(30, 30, 30, 30)
+        
+        c_title = QLabel("Contact Us")
+        c_title.setStyleSheet("color: white; font-size: 20pt; font-weight: bold; border: none; background: transparent;")
+        contact_layout.addWidget(c_title)
+        
+        c_info = QLabel("WhatsApp: 9778561010\nEmail: support@blingzen.com\nHours: 24/7 Premium Support")
+        c_info.setStyleSheet("color: #ccc; font-size: 14pt; line-height: 1.5; border: none; background: transparent; margin-top: 20px;")
+        contact_layout.addWidget(c_info)
+        contact_layout.addStretch()
+        
+        btn_wa = QPushButton("Chat on WhatsApp")
+        btn_wa.setStyleSheet("background-color: #25D366; color: white; font-size: 14pt; font-weight: bold; padding: 15px; border-radius: 8px;")
+        btn_wa.setCursor(Qt.PointingHandCursor)
+        contact_layout.addWidget(btn_wa)
+        
+        content_layout.addWidget(contact_widget, 4)
+        
+        bg_layout.addLayout(content_layout)
+        main_layout.addWidget(self.bg)
+
 
 class FirestoreSignals(QObject):
     new_order = pyqtSignal(dict)
