@@ -341,9 +341,6 @@ class ModernLoginScreen(QDialog):
             self.center_logo.setPixmap(QPixmap(logo_path).scaled(300, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         self.center_logo.setStyleSheet("background: transparent;")
         self.center_logo.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self.center_logo.setFixedSize(300, 300)
-        self.center_logo.setAlignment(Qt.AlignCenter)
-        self.center_logo.show()
 
         # Overlay
         self.overlay = LoadingOverlay(self)
@@ -353,9 +350,13 @@ class ModernLoginScreen(QDialog):
         super().resizeEvent(event)
         if hasattr(self, 'overlay'):
             self.overlay.resize(self.size())
-        if hasattr(self, 'center_logo'):
+        if hasattr(self, 'center_logo') and self.center_logo.pixmap():
+            # Left side is 45% width, so the split is at width * 0.45
             split_x = self.width() * 0.45
-            self.center_logo.move(int(split_x - 150), int((self.height() - 300) / 2))
+            logo_w = self.center_logo.pixmap().width()
+            # Place the logo vertically centered
+            logo_h = self.center_logo.pixmap().height()
+            self.center_logo.move(int(split_x - (logo_w / 2)), int((self.height() - logo_h) / 2))
             self.center_logo.raise_()
             self.center_logo.show()
 
@@ -8286,121 +8287,147 @@ class MasterDataDialog(QDialog):
         self.conn = conn
         self.setWindowTitle("Master Data Hub - BlingZen")
         
+        # Professional frameless window
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        
         screen = QApplication.primaryScreen().geometry()
-        # Make it a centered modal, large enough for data entry
-        w, h = int(screen.width() * 0.8), int(screen.height() * 0.8)
+        w, h = int(screen.width() * 0.75), int(screen.height() * 0.75)
         self.setGeometry((screen.width() - w) // 2, (screen.height() - h) // 2, w, h)
         
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #f0f2f5;
-            }
-        """)
         self.init_ui()
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(25, 25, 25, 25)
-        main_layout.setSpacing(20)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        
+        # Main Background Frame with Drop Shadow effect
+        bg_frame = QFrame()
+        bg_frame.setObjectName("MainFrame")
+        bg_frame.setStyleSheet("""
+            QFrame#MainFrame {
+                background-color: #f8f9fa;
+                border-radius: 12px;
+                border: 1px solid #ced4da;
+            }
+        """)
+        
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(20)
+        shadow.setColor(QColor(0, 0, 0, 80))
+        shadow.setOffset(0, 4)
+        bg_frame.setGraphicsEffect(shadow)
+        
+        frame_layout = QVBoxLayout(bg_frame)
+        frame_layout.setContentsMargins(30, 30, 30, 30)
+        frame_layout.setSpacing(20)
         
         # Header
         header_layout = QHBoxLayout()
         title = QLabel("🛠️ Master Data Hub")
-        title.setStyleSheet("color: #1a1a1a; font-size: 24pt; font-weight: bold;")
+        title.setStyleSheet("color: #212529; font-size: 26pt; font-weight: 800; font-family: 'Segoe UI', Arial, sans-serif;")
         
-        btn_close = QPushButton("✕ Close (Esc)")
+        btn_close = QPushButton("✕ Close")
         btn_close.setCursor(Qt.PointingHandCursor)
         btn_close.setStyleSheet("""
             QPushButton { 
-                background: white; color: #dc3545; border-radius: 6px; padding: 10px 20px; 
-                font-weight: bold; font-size: 11pt; border: 1px solid #dc3545;
+                background-color: transparent; 
+                color: #6c757d; 
+                font-size: 14pt; 
+                font-weight: bold; 
+                border: none;
+                padding: 5px 15px;
             }
-            QPushButton:hover { background: #dc3545; color: white; }
+            QPushButton:hover { 
+                color: #dc3545; 
+                background-color: #f8d7da;
+                border-radius: 6px;
+            }
         """)
         btn_close.clicked.connect(self.close)
         
         header_layout.addWidget(title)
         header_layout.addStretch()
         header_layout.addWidget(btn_close)
-        main_layout.addLayout(header_layout)
+        frame_layout.addLayout(header_layout)
         
-        # Tabs styling (Light theme, mac-like)
+        # Separator Line
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setStyleSheet("background-color: #dee2e6;")
+        frame_layout.addWidget(line)
+        
+        # Tabs styling (Clean, scaling-safe)
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet("""
             QTabWidget::pane { 
-                border: 1px solid #dee2e6; 
+                border: 1px solid #ced4da; 
                 background: white; 
-                border-radius: 8px; 
-                border-top-left-radius: 0px; 
+                border-radius: 8px;
             }
             QTabBar::tab {
-                background: #e9ecef; 
-                color: #495057; 
-                font-size: 12pt; 
-                font-weight: bold;
-                padding: 12px 24px; 
-                margin-right: 2px; 
-                border-top-left-radius: 8px;
-                border-top-right-radius: 8px;
-                border: 1px solid #dee2e6;
-                border-bottom: none;
+                background: transparent; 
+                color: #6c757d; 
+                font-size: 13pt; 
+                font-weight: 600;
+                padding: 10px 15px; 
+                border-bottom: 3px solid transparent;
             }
             QTabBar::tab:selected { 
-                background: white; 
                 color: #0d6efd; 
+                border-bottom: 3px solid #0d6efd;
             }
             QTabBar::tab:hover:!selected { 
-                background: #f8f9fa; 
+                color: #495057; 
             }
         """)
         
-        self.tabs.addTab(self.create_master_tab("units", "name", "Measurement Units"), "⚖️ Units")
-        self.tabs.addTab(self.create_master_tab("categories", "name", "Categories"), "📦 Categories")
-        self.tabs.addTab(self.create_master_tab("tax_rates", "rate", "Tax Rates (%)"), "💰 Tax Rates")
-        self.tabs.addTab(self.create_master_tab("master_modifiers", "name", "Modifiers/Add-ons"), "🍔 Modifiers")
-        self.tabs.addTab(self.create_master_tab("master_order_types", "name", "Order Types"), "🏷️ Order Types")
-        self.tabs.addTab(self.create_master_tab("master_kitchen_stations", "name", "Kitchen Stations"), "🍳 Stations")
-        self.tabs.addTab(self.create_master_tab("master_payment_channels", "name", "Payment Channels"), "💳 Payments")
+        self.tabs.addTab(self.create_master_tab("units", "name", "Measurement Units", "⚖️"), " Units ")
+        self.tabs.addTab(self.create_master_tab("categories", "name", "Categories", "📦"), " Categories ")
+        self.tabs.addTab(self.create_master_tab("tax_rates", "rate", "Tax Rates (%)", "💰"), " Tax Rates ")
+        self.tabs.addTab(self.create_master_tab("master_modifiers", "name", "Modifiers/Add-ons", "🍔"), " Modifiers ")
+        self.tabs.addTab(self.create_master_tab("master_order_types", "name", "Order Types", "🏷️"), " Order Types ")
+        self.tabs.addTab(self.create_master_tab("master_kitchen_stations", "name", "Kitchen Stations", "🍳"), " Kitchen ")
+        self.tabs.addTab(self.create_master_tab("master_payment_channels", "name", "Payment Channels", "💳"), " Payments ")
         self.tabs.addTab(self.create_ingredients_tab(), "🧅 Ingredients")
         
-        main_layout.addWidget(self.tabs)
+        frame_layout.addWidget(self.tabs)
+        main_layout.addWidget(bg_frame)
         
         # Keyboard Shortcuts
         QShortcut(QKeySequence("Esc"), self).activated.connect(self.close)
         
-        # Ctrl+Tab to switch tabs
         shortcut_next_tab = QShortcut(QKeySequence("Ctrl+Tab"), self)
         shortcut_next_tab.activated.connect(lambda: self.tabs.setCurrentIndex((self.tabs.currentIndex() + 1) % self.tabs.count()))
         
         shortcut_prev_tab = QShortcut(QKeySequence("Ctrl+Shift+Tab"), self)
         shortcut_prev_tab.activated.connect(lambda: self.tabs.setCurrentIndex((self.tabs.currentIndex() - 1) % self.tabs.count()))
 
-
-    def create_master_tab(self, table_name, col_name, title):
+    def create_master_tab(self, table_name, col_name, title, icon):
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
+        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setSpacing(20)
         
         add_layout = QHBoxLayout()
         txt_input = QLineEdit()
-        txt_input.setPlaceholderText(f"Add New {title}... (Press Enter)")
+        txt_input.setPlaceholderText(f"{icon}  Add New {title}... (Press Enter)")
         txt_input.setStyleSheet("""
             QLineEdit {
-                background: white; color: #333; font-size: 13pt; padding: 12px;
-                border: 1px solid #ced4da; border-radius: 6px;
+                background: white; color: #212529; font-size: 14pt; padding: 12px 15px;
+                border: 1px solid #ced4da; border-radius: 8px;
             }
-            QLineEdit:focus { border: 2px solid #0d6efd; }
+            QLineEdit:focus { border: 2px solid #0d6efd; outline: none; }
         """)
         
-        btn_add = QPushButton("Add")
+        btn_add = QPushButton("Add Record")
         btn_add.setCursor(Qt.PointingHandCursor)
         btn_add.setStyleSheet("""
             QPushButton {
-                background: #0d6efd; color: white; font-size: 13pt; font-weight: bold;
-                padding: 12px 30px; border-radius: 6px; border: none;
+                background-color: #0d6efd; color: white; font-size: 13pt; font-weight: bold;
+                padding: 12px 30px; border-radius: 8px; border: none;
             }
-            QPushButton:hover { background: #0b5ed7; }
+            QPushButton:hover { background-color: #0b5ed7; }
         """)
         
         add_layout.addWidget(txt_input)
@@ -8415,33 +8442,32 @@ class MasterDataDialog(QDialog):
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.setFocusPolicy(Qt.StrongFocus)
         table.setAlternatingRowColors(True)
+        table.setShowGrid(False)
         table.setStyleSheet("""
             QTableWidget {
                 background-color: white; 
                 alternate-background-color: #f8f9fa;
                 color: #212529; 
-                font-size: 12pt;
+                font-size: 13pt;
                 border: 1px solid #dee2e6; 
-                border-radius: 6px; 
-                gridline-color: #e9ecef;
-                outline: 0;
+                border-radius: 8px; 
             }
-            QTableWidget::item { padding: 8px; }
-            QTableWidget::item:selected { background-color: #0d6efd; color: white; }
+            QTableWidget::item { padding: 10px; border-bottom: 1px solid #f1f3f5; }
+            QTableWidget::item:selected { background-color: #e7f1ff; color: #0d6efd; font-weight: bold; }
             QHeaderView::section {
                 background-color: #f8f9fa; color: #495057; font-weight: bold; font-size: 12pt;
-                padding: 10px; border: none; border-bottom: 2px solid #dee2e6; border-right: 1px solid #dee2e6;
+                padding: 12px; border: none; border-bottom: 2px solid #dee2e6; text-transform: uppercase;
             }
         """)
         table.verticalHeader().setVisible(False)
         layout.addWidget(table)
         
-        btn_del = QPushButton("🗑️ Delete Selected (Press Del)")
+        btn_del = QPushButton("🗑️ Delete Selected (Del)")
         btn_del.setCursor(Qt.PointingHandCursor)
         btn_del.setStyleSheet("""
             QPushButton {
-                background: white; color: #dc3545; font-size: 11pt; font-weight: bold;
-                padding: 10px 20px; border: 1px solid #dc3545; border-radius: 6px;
+                background: white; color: #dc3545; font-size: 12pt; font-weight: bold;
+                padding: 10px 20px; border: 2px solid #dc3545; border-radius: 8px;
             }
             QPushButton:hover { background: #dc3545; color: white; }
         """)
@@ -8498,8 +8524,8 @@ class MasterDataDialog(QDialog):
     def create_ingredients_tab(self):
         w = QWidget()
         layout = QVBoxLayout(w)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
+        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setSpacing(20)
         
         form_layout = QHBoxLayout()
         
@@ -8521,30 +8547,23 @@ class MasterDataDialog(QDialog):
         for w_input in [self.ing_name_input, self.ing_cost_input, self.ing_unit_input]:
             w_input.setStyleSheet("""
                 QLineEdit, QComboBox {
-                    background: white; color: #333; font-size: 13pt; padding: 12px;
-                    border: 1px solid #ced4da; border-radius: 6px;
+                    background: white; color: #212529; font-size: 14pt; padding: 12px 15px;
+                    border: 1px solid #ced4da; border-radius: 8px;
                 }
-                QLineEdit:focus, QComboBox:focus { border: 2px solid #0d6efd; }
-                QComboBox::drop-down { border: none; }
+                QLineEdit:focus, QComboBox:focus { border: 2px solid #0d6efd; outline: none; }
+                QComboBox::drop-down { border: none; width: 30px; }
             """)
         
         btn_add = QPushButton("Add Ingredient")
         btn_add.setCursor(Qt.PointingHandCursor)
         btn_add.setStyleSheet("""
             QPushButton {
-                background: #0d6efd; color: white; font-size: 13pt; font-weight: bold;
-                padding: 12px 20px; border-radius: 6px; border: none;
+                background-color: #0d6efd; color: white; font-size: 13pt; font-weight: bold;
+                padding: 12px 30px; border-radius: 8px; border: none;
             }
-            QPushButton:hover { background: #0b5ed7; }
+            QPushButton:hover { background-color: #0b5ed7; }
         """)
         btn_add.clicked.connect(self.add_ingredient)
-        
-        # Smart Keyboard Focus Flow
-        self.ing_name_input.returnPressed.connect(self.ing_unit_input.setFocus)
-        # For QComboBox, we can't easily capture returnPressed without subclassing or event filter, 
-        # so we'll just allow Tab, or they can hit Enter if we use an event filter.
-        # But wait, QComboBox DOES have an activated signal we could use if editable, but it's not.
-        # We will use an event filter to capture Enter key on QComboBox.
         
         class EnterEater(QObject):
             def __init__(self, target, parent=None):
@@ -8556,9 +8575,9 @@ class MasterDataDialog(QDialog):
                     return True
                 return super().eventFilter(obj, event)
 
+        self.ing_name_input.returnPressed.connect(self.ing_unit_input.setFocus)
         self.eater = EnterEater(self.ing_cost_input, self)
         self.ing_unit_input.installEventFilter(self.eater)
-        
         self.ing_cost_input.returnPressed.connect(self.add_ingredient)
         
         form_layout.addWidget(self.ing_name_input, stretch=3)
@@ -8575,29 +8594,29 @@ class MasterDataDialog(QDialog):
         self.ing_table.setSelectionMode(QTableWidget.SingleSelection)
         self.ing_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.ing_table.setAlternatingRowColors(True)
+        self.ing_table.setShowGrid(False)
         self.ing_table.setStyleSheet("""
             QTableWidget {
                 background-color: white; alternate-background-color: #f8f9fa;
-                color: #212529; font-size: 12pt;
-                border: 1px solid #dee2e6; border-radius: 6px; gridline-color: #e9ecef;
-                outline: 0;
+                color: #212529; font-size: 13pt;
+                border: 1px solid #dee2e6; border-radius: 8px;
             }
-            QTableWidget::item { padding: 8px; }
-            QTableWidget::item:selected { background-color: #0d6efd; color: white; }
+            QTableWidget::item { padding: 10px; border-bottom: 1px solid #f1f3f5; }
+            QTableWidget::item:selected { background-color: #e7f1ff; color: #0d6efd; font-weight: bold; }
             QHeaderView::section {
                 background-color: #f8f9fa; color: #495057; font-weight: bold; font-size: 12pt;
-                padding: 10px; border: none; border-bottom: 2px solid #dee2e6; border-right: 1px solid #dee2e6;
+                padding: 12px; border: none; border-bottom: 2px solid #dee2e6; text-transform: uppercase;
             }
         """)
         self.ing_table.verticalHeader().setVisible(False)
         layout.addWidget(self.ing_table)
         
-        btn_delete = QPushButton("🗑️ Delete Selected (Press Del)")
+        btn_delete = QPushButton("🗑️ Delete Selected (Del)")
         btn_delete.setCursor(Qt.PointingHandCursor)
         btn_delete.setStyleSheet("""
             QPushButton {
-                background: white; color: #dc3545; font-size: 11pt; font-weight: bold;
-                padding: 10px 20px; border: 1px solid #dc3545; border-radius: 6px;
+                background: white; color: #dc3545; font-size: 12pt; font-weight: bold;
+                padding: 10px 20px; border: 2px solid #dc3545; border-radius: 8px;
             }
             QPushButton:hover { background: #dc3545; color: white; }
         """)
@@ -8642,11 +8661,8 @@ class MasterDataDialog(QDialog):
             self.ing_name_input.clear()
             self.ing_cost_input.clear()
             self.load_ingredients()
-        except sqlite3.IntegrityError:
-            self.ing_name_input.clear()
         except Exception as e:
-            pass
-        # Reset focus to the first input for fast continuous entry
+            self.ing_name_input.clear()
         self.ing_name_input.setFocus()
 
     def delete_ingredient(self):
