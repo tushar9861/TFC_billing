@@ -10725,6 +10725,8 @@ class MainWindow(QMainWindow):
         action_cost_planner.triggered.connect(lambda: ItemCostPlannerDialog(self.conn, self).exec_())
         action_sales_planner = QAction("📈 Sales Planner", self)
         action_sales_planner.triggered.connect(lambda: SalesPlannerDialog(self.conn, self).exec_())
+        action_profit_loss = QAction("📊 Profit & Loss Statement", self)
+        action_profit_loss.triggered.connect(self.show_profit_loss_dialog)
         action_smtp_settings = QAction("Email Settings", self)
         action_smtp_settings.triggered.connect(self.open_smtp_settings_dialog)
         action_reprint = QAction("Reprint", self)
@@ -11586,6 +11588,10 @@ class MainWindow(QMainWindow):
 
     def open_reports_dialog(self):
         dialog = ReportsDialog(self.conn, self)
+        dialog.exec_()
+
+    def show_profit_loss_dialog(self):
+        dialog = ProfitLossAnalyticsDialog(self.conn, self)
         dialog.exec_()
         
     def open_advanced_dialog(self):
