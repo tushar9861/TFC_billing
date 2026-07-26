@@ -11030,7 +11030,7 @@ class MainWindow(QMainWindow):
         try:
             from firestore_rest import firestore as db
             if db:
-                conf = db.get_document('app_config', 'theme_promo')
+                conf = db.get_document('app_config/theme_promo')
                 if isinstance(conf, dict):
                     primary_color = conf.get('primary_color', primary_color) or primary_color
                     bg_color = conf.get('background_color', bg_color) or bg_color
