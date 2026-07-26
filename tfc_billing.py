@@ -8248,35 +8248,107 @@ class MasterDataDialog(QDialog):
     def __init__(self, conn, parent=None):
         super().__init__(parent)
         self.conn = conn
-        self.setWindowTitle("Master Data Hub (Root Config)")
+        self.setWindowTitle("Master Data Hub - BlingZen")
+        self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        
         screen = QApplication.primaryScreen().geometry()
-        self.setGeometry(100, 100, int(screen.width() * 0.9), int(screen.height() * 0.9))
-        self.setStyleSheet("QDialog { background-color: #f0f2f5; } QTableWidget { background-color: white; }")
+        # Make it a centered modal
+        w, h = int(screen.width() * 0.8), int(screen.height() * 0.8)
+        self.setGeometry((screen.width() - w) // 2, (screen.height() - h) // 2, w, h)
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout(self)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
         
+        # Main background container with rounded corners
+        bg_frame = QFrame()
+        bg_frame.setStyleSheet("""
+            QFrame {
+                background-color: #121824; 
+                border-radius: 15px; 
+                border: 1px solid rgba(255,255,255,0.1);
+            }
+        """)
+        layout = QVBoxLayout(bg_frame)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        # Header
+        header_layout = QHBoxLayout()
+        title = QLabel("🛠️ Master Data Hub")
+        title.setStyleSheet("color: white; font-size: 24pt; font-weight: bold; background: transparent; border: none;")
+        
+        btn_close = QPushButton("✕ Close (Esc)")
+        btn_close.setCursor(Qt.PointingHandCursor)
+        btn_close.setStyleSheet("""
+            QPushButton { 
+                background: rgba(255,255,255,0.1); color: white; border-radius: 8px; padding: 8px 15px; font-weight: bold; 
+            }
+            QPushButton:hover { background: #e30613; }
+        """)
+        btn_close.clicked.connect(self.close)
+        
+        header_layout.addWidget(title)
+        header_layout.addStretch()
+        header_layout.addWidget(btn_close)
+        layout.addLayout(header_layout)
+        
+        # Tabs styling
         self.tabs = QTabWidget()
+        self.tabs.setStyleSheet("""
+            QTabWidget::pane { border: none; background: transparent; }
+            QTabBar::tab {
+                background: rgba(255,255,255,0.05); color: #ccc; font-size: 13pt; font-weight: bold;
+                padding: 12px 25px; margin-right: 5px; border-radius: 8px;
+            }
+            QTabBar::tab:selected { background: #e30613; color: white; }
+            QTabBar::tab:hover:!selected { background: rgba(255,255,255,0.1); }
+        """)
+        
         self.tabs.addTab(self.create_master_tab("units", "name", "Measurement Units"), "⚖️ Units")
         self.tabs.addTab(self.create_master_tab("categories", "name", "Categories"), "📦 Categories")
         self.tabs.addTab(self.create_master_tab("tax_rates", "rate", "Tax Rates (%)"), "💰 Tax Rates")
         self.tabs.addTab(self.create_master_tab("master_modifiers", "name", "Modifiers/Add-ons"), "🍔 Modifiers")
-        self.tabs.addTab(self.create_master_tab("master_order_types", "name", "Order Types (Takeaway, Web, etc)"), "📦 Order Types")
-        self.tabs.addTab(self.create_master_tab("master_kitchen_stations", "name", "Kitchen Stations"), "🍳 Kitchen Stations")
-        self.tabs.addTab(self.create_master_tab("master_payment_channels", "name", "Payment Channels"), "💳 Payment Channels")
+        self.tabs.addTab(self.create_master_tab("master_order_types", "name", "Order Types"), "🏷️ Order Types")
+        self.tabs.addTab(self.create_master_tab("master_kitchen_stations", "name", "Kitchen Stations"), "🍳 Stations")
+        self.tabs.addTab(self.create_master_tab("master_payment_channels", "name", "Payment Channels"), "💳 Payments")
         self.tabs.addTab(self.create_ingredients_tab(), "🧅 Ingredients")
         
         layout.addWidget(self.tabs)
+        main_layout.addWidget(bg_frame)
+        
+        # Shortcut for closing
+        QShortcut(QKeySequence("Esc"), self).activated.connect(self.close)
 
     def create_master_tab(self, table_name, col_name, title):
         widget = QWidget()
         layout = QVBoxLayout(widget)
+        layout.setContentsMargins(10, 20, 10, 10)
+        layout.setSpacing(20)
         
         add_layout = QHBoxLayout()
         txt_input = QLineEdit()
-        txt_input.setPlaceholderText(f"Add New {title}...")
+        txt_input.setPlaceholderText(f"Add New {title}... (Press Enter)")
+        txt_input.setStyleSheet("""
+            QLineEdit {
+                background: rgba(0,0,0,0.3); color: white; font-size: 14pt; padding: 12px;
+                border: 2px solid rgba(255,255,255,0.1); border-radius: 8px;
+            }
+            QLineEdit:focus { border: 2px solid #e30613; }
+        """)
+        
         btn_add = QPushButton("Add")
+        btn_add.setCursor(Qt.PointingHandCursor)
+        btn_add.setStyleSheet("""
+            QPushButton {
+                background: #00D26A; color: white; font-size: 14pt; font-weight: bold;
+                padding: 12px 30px; border-radius: 8px; border: none;
+            }
+            QPushButton:hover { background: #00b359; }
+        """)
+        
         add_layout.addWidget(txt_input)
         add_layout.addWidget(btn_add)
         layout.addLayout(add_layout)
@@ -8285,12 +8357,35 @@ class MasterDataDialog(QDialog):
         table.setHorizontalHeaderLabels(["ID", title])
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.setSelectionMode(QTableWidget.SingleSelection)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.setFocusPolicy(Qt.StrongFocus)
+        table.setStyleSheet("""
+            QTableWidget {
+                background: rgba(255,255,255,0.02); color: white; font-size: 12pt;
+                border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; gridline-color: rgba(255,255,255,0.05);
+            }
+            QTableWidget::item { padding: 10px; }
+            QTableWidget::item:selected { background: rgba(227,6,19,0.3); color: white; }
+            QHeaderView::section {
+                background: rgba(0,0,0,0.5); color: #aaa; font-weight: bold; font-size: 12pt;
+                padding: 10px; border: none; border-bottom: 1px solid rgba(255,255,255,0.1);
+            }
+            QTableCornerButton::section { background: transparent; }
+        """)
+        table.verticalHeader().setVisible(False)
         layout.addWidget(table)
         
-        btn_del = QPushButton("Delete Selected")
-        btn_del.setStyleSheet("background-color: #dc3545; color: white;")
-        layout.addWidget(btn_del)
+        btn_del = QPushButton("🗑️ Delete Selected (Press Del)")
+        btn_del.setCursor(Qt.PointingHandCursor)
+        btn_del.setStyleSheet("""
+            QPushButton {
+                background: transparent; color: #ff4d4d; font-size: 12pt; font-weight: bold;
+                padding: 10px; border: 1px solid #ff4d4d; border-radius: 8px;
+            }
+            QPushButton:hover { background: rgba(255,77,77,0.1); }
+        """)
+        layout.addWidget(btn_del, alignment=Qt.AlignRight)
         
         def load_data():
             table.setRowCount(0)
@@ -8314,7 +8409,9 @@ class MasterDataDialog(QDialog):
                 txt_input.clear()
                 load_data()
             except Exception as e:
-                QMessageBox.warning(self, "Error", "Already exists or invalid.")
+                # Silently ignore if already exists, just clear to maintain flow
+                txt_input.clear()
+            txt_input.setFocus()
                 
         def del_data():
             row = table.currentRow()
@@ -8325,24 +8422,38 @@ class MasterDataDialog(QDialog):
             self.conn.commit()
             load_data()
             
+        # Connections
         btn_add.clicked.connect(add_data)
+        txt_input.returnPressed.connect(add_data) # ENTER KEY FLOW
         btn_del.clicked.connect(del_data)
+        
+        # DELETE KEY FLOW on Table
+        def table_key_press(event):
+            if event.key() == Qt.Key_Delete:
+                del_data()
+            else:
+                QTableWidget.keyPressEvent(table, event)
+        table.keyPressEvent = table_key_press
         
         load_data()
         return widget
 
-
-
     def create_ingredients_tab(self):
         w = QWidget()
         layout = QVBoxLayout(w)
+        layout.setContentsMargins(10, 20, 10, 10)
+        layout.setSpacing(20)
         
-        add_layout = QHBoxLayout()
+        # Form layout
+        form_frame = QFrame()
+        form_frame.setStyleSheet("QFrame { background: rgba(0,0,0,0.2); border-radius: 8px; }")
+        form_layout = QHBoxLayout(form_frame)
+        form_layout.setContentsMargins(15, 15, 15, 15)
+        
         self.ing_name_input = QLineEdit()
         self.ing_name_input.setPlaceholderText("Ingredient Name")
         
         self.ing_unit_input = QComboBox()
-        # Load units
         try:
             c = self.conn.cursor()
             c.execute("SELECT name FROM units")
@@ -8354,28 +8465,78 @@ class MasterDataDialog(QDialog):
         self.ing_cost_input.setPlaceholderText("Cost per Unit")
         self.ing_cost_input.setValidator(QDoubleValidator(0.00, 999999.99, 2))
         
-        btn_add = QPushButton("Add")
+        for w_input in [self.ing_name_input, self.ing_cost_input, self.ing_unit_input]:
+            w_input.setStyleSheet("""
+                QLineEdit, QComboBox {
+                    background: rgba(0,0,0,0.3); color: white; font-size: 13pt; padding: 10px;
+                    border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
+                }
+                QLineEdit:focus, QComboBox:focus { border: 1px solid #e30613; }
+                QComboBox::drop-down { border: none; }
+            """)
+        
+        btn_add = QPushButton("Add Ingredient")
+        btn_add.setCursor(Qt.PointingHandCursor)
+        btn_add.setStyleSheet("""
+            QPushButton {
+                background: #00D26A; color: white; font-size: 13pt; font-weight: bold;
+                padding: 10px 20px; border-radius: 6px; border: none;
+            }
+            QPushButton:hover { background: #00b359; }
+        """)
         btn_add.clicked.connect(self.add_ingredient)
         
-        add_layout.addWidget(QLabel("Name:"))
-        add_layout.addWidget(self.ing_name_input)
-        add_layout.addWidget(QLabel("Unit:"))
-        add_layout.addWidget(self.ing_unit_input)
-        add_layout.addWidget(QLabel("Cost/Unit:"))
-        add_layout.addWidget(self.ing_cost_input)
-        add_layout.addWidget(btn_add)
+        # ENTER KEY FLOW
+        self.ing_name_input.returnPressed.connect(self.add_ingredient)
+        self.ing_cost_input.returnPressed.connect(self.add_ingredient)
         
-        layout.addLayout(add_layout)
+        form_layout.addWidget(self.ing_name_input, stretch=3)
+        form_layout.addWidget(self.ing_unit_input, stretch=2)
+        form_layout.addWidget(self.ing_cost_input, stretch=2)
+        form_layout.addWidget(btn_add, stretch=1)
+        
+        layout.addWidget(form_frame)
         
         self.ing_table = QTableWidget(0, 4)
         self.ing_table.setHorizontalHeaderLabels(["ID", "Name", "Unit", "Cost/Unit"])
         self.ing_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.ing_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.ing_table.setSelectionMode(QTableWidget.SingleSelection)
+        self.ing_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.ing_table.setStyleSheet("""
+            QTableWidget {
+                background: rgba(255,255,255,0.02); color: white; font-size: 12pt;
+                border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; gridline-color: rgba(255,255,255,0.05);
+            }
+            QTableWidget::item { padding: 10px; }
+            QTableWidget::item:selected { background: rgba(227,6,19,0.3); color: white; }
+            QHeaderView::section {
+                background: rgba(0,0,0,0.5); color: #aaa; font-weight: bold; font-size: 12pt;
+                padding: 10px; border: none; border-bottom: 1px solid rgba(255,255,255,0.1);
+            }
+        """)
+        self.ing_table.verticalHeader().setVisible(False)
         layout.addWidget(self.ing_table)
         
-        btn_delete = QPushButton("Delete Selected")
-        btn_delete.setStyleSheet("background-color: #dc3545;")
+        btn_delete = QPushButton("🗑️ Delete Selected (Press Del)")
+        btn_delete.setCursor(Qt.PointingHandCursor)
+        btn_delete.setStyleSheet("""
+            QPushButton {
+                background: transparent; color: #ff4d4d; font-size: 12pt; font-weight: bold;
+                padding: 10px; border: 1px solid #ff4d4d; border-radius: 8px;
+            }
+            QPushButton:hover { background: rgba(255,77,77,0.1); }
+        """)
         btn_delete.clicked.connect(self.delete_ingredient)
-        layout.addWidget(btn_delete)
+        layout.addWidget(btn_delete, alignment=Qt.AlignRight)
+        
+        # DELETE KEY FLOW on Table
+        def table_key_press(event):
+            if event.key() == Qt.Key_Delete:
+                self.delete_ingredient()
+            else:
+                QTableWidget.keyPressEvent(self.ing_table, event)
+        self.ing_table.keyPressEvent = table_key_press
         
         self.load_ingredients()
         return w
@@ -8393,14 +8554,13 @@ class MasterDataDialog(QDialog):
                     if col_idx == 0: it.setFlags(it.flags() ^ Qt.ItemIsEditable)
                     self.ing_table.setItem(row_idx, col_idx, it)
         except Exception as e:
-            print("Error loading ingredients:", e)
+            pass
 
     def add_ingredient(self):
         name = self.ing_name_input.text().strip()
         unit = self.ing_unit_input.currentText().strip()
         cost = self.ing_cost_input.text().strip()
         if not name or not cost:
-            QMessageBox.warning(self, "Error", "Name and Cost are required.")
             return
         try:
             c = self.conn.cursor()
@@ -8410,25 +8570,22 @@ class MasterDataDialog(QDialog):
             self.ing_cost_input.clear()
             self.load_ingredients()
         except sqlite3.IntegrityError:
-            QMessageBox.warning(self, "Error", "Ingredient already exists.")
+            self.ing_name_input.clear()
         except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+            pass
+        self.ing_name_input.setFocus()
 
     def delete_ingredient(self):
         row = self.ing_table.currentRow()
         if row < 0: return
         ing_id = self.ing_table.item(row, 0).text()
-        reply = QMessageBox.question(self, 'Confirm', 'Delete this ingredient?', QMessageBox.Yes | QMessageBox.No)
-        if reply == QMessageBox.Yes:
-            try:
-                c = self.conn.cursor()
-                c.execute("DELETE FROM ingredients WHERE id=?", (ing_id,))
-                self.conn.commit()
-                self.load_ingredients()
-            except Exception as e:
-                QMessageBox.critical(self, "Error", str(e))
-
-
+        try:
+            c = self.conn.cursor()
+            c.execute("DELETE FROM ingredients WHERE id=?", (ing_id,))
+            self.conn.commit()
+            self.load_ingredients()
+        except Exception as e:
+            pass
 
 class IngredientManagerDialog(QDialog):
     def __init__(self, conn, parent=None):
