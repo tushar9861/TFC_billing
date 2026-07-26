@@ -8462,6 +8462,8 @@ class MainWindow(QMainWindow):
                         print_pdf(pdf_path)
                 except: pass
                 self.show_notification(f"New KOT synced from Web Admin: {kot_data['kot_no']}")
+                if hasattr(self, 'refresh_kot_dropdown'):
+                    self.refresh_kot_dropdown()
         except Exception as e:
             log_exception(e)
 
@@ -8790,6 +8792,8 @@ class MainWindow(QMainWindow):
         def full_refresh():
             refresh_table()
             refresh_history()
+            if hasattr(self, 'refresh_kot_dropdown'):
+                self.refresh_kot_dropdown()
 
         btn_refresh.clicked.connect(full_refresh)
         btn_refresh_history.clicked.connect(refresh_history)
@@ -9550,8 +9554,9 @@ class MainWindow(QMainWindow):
         # KOT Fetch Area
         kot_layout = QHBoxLayout()
         self.kot_search_input = QComboBox()
-        self.kot_search_input.setEditable(True)
-        self.kot_search_input.lineEdit().setPlaceholderText("Select/Enter KOT...")
+        # Removed setEditable(True) to prevent typing glitches as requested
+        # Added a default empty option for placeholder effect
+        self.kot_search_input.addItem("Select KOT...")
         
         self.btn_cancel_kot = QPushButton("Cancel")
         self.btn_cancel_kot.setStyleSheet("background-color: #dc3545; color: white; border-radius: 4px; padding: 4px 12px; font-weight: bold;")
@@ -9563,8 +9568,9 @@ class MainWindow(QMainWindow):
         self.btn_fetch_kot.clicked.connect(self.fetch_kot)
         self.btn_fetch_kot.setVisible(False)
         
-        self.kot_search_input.lineEdit().textChanged.connect(self.toggle_kot_buttons)
-        self.kot_search_input.lineEdit().returnPressed.connect(self.process_kot_and_focus_customer)
+        self.kot_search_input.currentTextChanged.connect(self.toggle_kot_buttons)
+        # Using activated so it triggers on both Enter and Mouse Click
+        self.kot_search_input.activated.connect(self.process_kot_and_focus_customer)
 
         
         kot_layout.addWidget(self.kot_search_input)
